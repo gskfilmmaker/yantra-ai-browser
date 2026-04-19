@@ -124,6 +124,20 @@ class TabManager {
     tab.loading ? tab.view.webContents.stop() : tab.view.webContents.reload()
   }
 
+  // ── Find in page ───────────────────────────────────────────────────────────
+
+  findInPage(text, options = {}) {
+    const tab = this._activeTab()
+    if (tab?.type !== 'browser' || !text) return
+    tab.view.webContents.findInPage(text, { forward: true, findNext: false, ...options })
+  }
+
+  stopFindInPage() {
+    const tab = this._activeTab()
+    if (tab?.type !== 'browser') return
+    tab.view.webContents.stopFindInPage('clearSelection')
+  }
+
   // ── Content extraction ─────────────────────────────────────────────────────
 
   async getPageContent(tabId) {
@@ -235,6 +249,29 @@ class TabManager {
       if (t && favicons.length > 0) t.favicon = favicons[0]
       this._emitTabUpdate(tabId)
     })
+
+    wc.on('found-in-page', (_, result) => {
+      this._emit('find-result', {
+        activeMatchOrdinal: result.activeMatchOrdinal,
+        matches: result.matches,
+      })
+    })
+
+    // Downloads — save to ~/Downloads silently
+    if (!this._downloadHandlerSet) {
+      this._downloadHandlerSet = true
+      const { Notification } = require('electron')
+      const path = require('path')
+      const os = require('os')
+      wc.session.on('will-download', (_, item) => {
+        item.setSavePath(path.join(os.homedir(), 'Downloads', item.getFilename()))
+        item.on('done', (__, state) => {
+          if (state === 'completed') {
+            new Notification({ title: 'Download complete', body: item.getFilename() }).show()
+          }
+        })
+      })
+    }
 
     // Open new-window requests as new browser tabs
     wc.setWindowOpenHandler(({ url }) => {

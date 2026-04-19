@@ -18,7 +18,9 @@ contextBridge.exposeInMainWorld('api', {
     reload:      ()       => ipcRenderer.invoke('browser:reload'),
     getContent:  (id)     => ipcRenderer.invoke('browser:getContent', id),
     getAllContent: ()      => ipcRenderer.invoke('browser:getAllContent'),
-    setBounds:   (bounds) => ipcRenderer.invoke('browser:setBounds', bounds),
+    setBounds:      (bounds)      => ipcRenderer.invoke('browser:setBounds', bounds),
+    findInPage:     (text, opts)  => ipcRenderer.invoke('browser:findInPage', text, opts),
+    stopFindInPage: ()            => ipcRenderer.invoke('browser:stopFindInPage'),
   },
 
   // ── AI agent ────────────────────────────────────────────────────────────────
@@ -39,6 +41,8 @@ contextBridge.exposeInMainWorld('api', {
     tabClosed:   (cb) => ipcRenderer.on('tab:closed',    (_, d) => cb(d)),
     agentEvent:  (cb) => ipcRenderer.on('agent-event',   (_, d) => cb(d)),
     focusUrlBar: (cb) => ipcRenderer.on('focus-url-bar', ()    => cb()),
+    startFind:   (cb) => ipcRenderer.on('start-find',   ()    => cb()),
+    findResult:  (cb) => ipcRenderer.on('find-result',  (_, d) => cb(d)),
   },
 
   // Remove all listeners for a channel (cleanup)

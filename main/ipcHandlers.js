@@ -1,10 +1,35 @@
 'use strict'
 const { ipcMain } = require('electron')
+const fs   = require('fs')
+const path = require('path')
+const os   = require('os')
 const TurndownService = require('turndown')
 const { parseDocument, DomUtils } = require('htmlparser2')
 const tabManager = require('./tabManager')
 const memoryStore = require('./memoryStore')
 const { routeAction } = require('./aiRouter')
+
+// ─── Session persistence ──────────────────────────────────────────────────────
+
+const SESSIONS_FILE = path.join(os.homedir(), '.strawberry', 'sessions.json')
+
+function loadSessions(map) {
+  try {
+    if (fs.existsSync(SESSIONS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf8'))
+      for (const [id, msgs] of Object.entries(data)) map.set(id, msgs)
+    }
+  } catch { /* ignore corrupt file */ }
+}
+
+function saveSessions(map) {
+  try {
+    const data = {}
+    for (const [id, msgs] of map) data[id] = msgs.slice(-60)
+    fs.mkdirSync(path.dirname(SESSIONS_FILE), { recursive: true })
+    fs.writeFileSync(SESSIONS_FILE, JSON.stringify(data), 'utf8')
+  } catch { /* ignore write errors */ }
+}
 
 // ─── Content extraction pipeline (same as real Strawberry) ───────────────────
 
@@ -136,6 +161,7 @@ Rules:
 // ─── Per-session conversation history (server-side) ──────────────────────────
 
 const sessionHistory = new Map()
+loadSessions(sessionHistory)
 
 // ─── Agent loop ───────────────────────────────────────────────────────────────
 
@@ -234,9 +260,11 @@ function register() {
   ipcMain.handle('browser:goBack',     ()       => tabManager.goBack())
   ipcMain.handle('browser:goForward',  ()       => tabManager.goForward())
   ipcMain.handle('browser:reload',     ()       => tabManager.reload())
-  ipcMain.handle('browser:getContent',    (_, id)     => tabManager.getPageContent(id))
-  ipcMain.handle('browser:getAllContent', ()          => tabManager.getAllTabsContent())
-  ipcMain.handle('browser:setBounds',     (_, bounds) => tabManager.setBrowserBounds(bounds))
+  ipcMain.handle('browser:getContent',      (_, id)         => tabManager.getPageContent(id))
+  ipcMain.handle('browser:getAllContent',   ()              => tabManager.getAllTabsContent())
+  ipcMain.handle('browser:setBounds',       (_, bounds)     => tabManager.setBrowserBounds(bounds))
+  ipcMain.handle('browser:findInPage',      (_, text, opts) => tabManager.findInPage(text, opts))
+  ipcMain.handle('browser:stopFindInPage',  ()              => tabManager.stopFindInPage())
 
   // Memory
   ipcMain.handle('memory:save',       (_, e)  => memoryStore.save(e))
@@ -259,6 +287,25 @@ function register() {
     } catch (e) {
       event.sender.send('agent-event', { sessionId, type: 'error', text: `Error: ${e.message}` })
     }
+
+    // Auto-save the research result to memory
+    const history = sessionHistory.get(sessionId) || []
+    const lastAsst = [...history].reverse().find(m => m.role === 'assistant')
+    const lastText = Array.isArray(lastAsst?.content)
+      ? (lastAsst.content.find(b => b.type === 'text')?.text || '')
+      : ''
+    if (lastText) {
+      const tab = tabManager.getActiveTab()
+      memoryStore.save({
+        type: 'research', prompt: message,
+        result: lastText.slice(0, 600),
+        url: tab?.url || '', title: tab?.title || '',
+      })
+    }
+
+    // Persist conversation to disk so it survives restart
+    saveSessions(sessionHistory)
+
     event.sender.send('agent-event', { sessionId, type: 'done' })
   })
 }

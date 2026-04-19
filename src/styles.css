@@ -125,6 +125,23 @@ button:focus-visible { outline: 2px solid #7C5CD4; outline-offset: 2px; }
   background: #fff;
 }
 
+/* ─── Find bar ───────────────────────────────────────────────── */
+.find-bar {
+  position: absolute; top: 8px; right: 16px; z-index: 200;
+  background: #fff; border: 1px solid #D0D0D0; border-radius: 8px;
+  padding: 5px 10px; display: flex; align-items: center; gap: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.12);
+}
+.find-bar[hidden] { display: none; }
+.find-input { width: 190px; border: none; outline: none; font-size: 13px; }
+.find-count { font-size: 12px; color: #999; min-width: 50px; text-align: right; }
+.find-nav, .find-close {
+  width: 24px; height: 24px; border-radius: 5px; color: #555; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .1s;
+}
+.find-nav:hover, .find-close:hover { background: #F2F2F2; color: #111; }
+
 /* ─── New tab page ───────────────────────────────────────────── */
 .new-tab-page {
   position: absolute; inset: 0;

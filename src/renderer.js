@@ -137,13 +137,62 @@ api.on.focusUrlBar(() => {
   input.select()
 })
 
+// ─── Find in page ─────────────────────────────────────────────────────────────
+
+const findBar   = $('findBar')
+const findInput = $('findInput')
+const findCount = $('findCount')
+
+function openFindBar() {
+  findBar.hidden = false
+  findInput.focus()
+  findInput.select()
+  scheduleBoundsUpdate()
+}
+
+function closeFindBar() {
+  findBar.hidden = true
+  findInput.value = ''
+  findCount.textContent = ''
+  api.browser.stopFindInPage()
+  scheduleBoundsUpdate()
+}
+
+api.on.startFind(openFindBar)
+
+api.on.findResult(({ activeMatchOrdinal, matches }) => {
+  findCount.textContent = matches ? `${activeMatchOrdinal}/${matches}` : 'No results'
+})
+
+findInput.addEventListener('input', () => {
+  if (findInput.value.trim()) api.browser.findInPage(findInput.value)
+  else { findCount.textContent = ''; api.browser.stopFindInPage() }
+})
+
+findInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    api.browser.findInPage(findInput.value, { forward: !e.shiftKey, findNext: true })
+  }
+  if (e.key === 'Escape') closeFindBar()
+})
+
+$('findPrev').addEventListener('click',  () => api.browser.findInPage(findInput.value, { forward: false, findNext: true }))
+$('findNext').addEventListener('click',  () => api.browser.findInPage(findInput.value, { forward: true,  findNext: true }))
+$('findClose').addEventListener('click', closeFindBar)
+
 // Top right buttons
 $('btnChat').addEventListener('click', () => {
   const overlay = $('aiOverlay')
-  overlay.style.display = overlay.style.display === 'none' ? 'flex' : 'flex'
+  overlay.style.display = overlay.style.display === 'none' ? 'flex' : 'none'
   scheduleBoundsUpdate()
 })
-$('btnUpdateNow').addEventListener('click', () => sendMessage('What\'s new? Give me a quick update on what you can help me with.'))
+$('btnUpdateNow').addEventListener('click', () => {
+  const tab = tabs.find(t => t.id === activeTabId)
+  const msg = tab?.url && !tab.url.startsWith('about:')
+    ? 'Summarize the current page and highlight the most important information.'
+    : 'What can you help me with? Give me a quick overview of your capabilities.'
+  sendMessage(msg)
+})
 
 // History sidebar button
 $('sbHistory').addEventListener('click', async () => {

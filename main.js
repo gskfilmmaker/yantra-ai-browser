@@ -92,6 +92,12 @@ app.whenReady().then(() => {
           click: () => tabManager.goForward(),
         },
         { type: 'separator' },
+        {
+          label: 'Find in Page',
+          accelerator: 'CmdOrCtrl+F',
+          click: () => mainWindow.webContents.send('start-find'),
+        },
+        { type: 'separator' },
         { role: 'toggleDevTools' },
       ],
     },

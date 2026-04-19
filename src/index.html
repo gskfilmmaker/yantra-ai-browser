@@ -80,6 +80,15 @@
         <div class="nt-hint">Press <kbd>Enter</kbd> to search Google, or type a URL</div>
       </div>
 
+      <!-- Find bar — floats top-right when Cmd+F is pressed -->
+      <div class="find-bar" id="findBar" hidden>
+        <input id="findInput" class="find-input" placeholder="Find in page…" autocomplete="off" spellcheck="false"/>
+        <span id="findCount" class="find-count"></span>
+        <button id="findPrev"  class="find-nav" title="Previous (Shift+Enter)">↑</button>
+        <button id="findNext"  class="find-nav" title="Next (Enter)">↓</button>
+        <button id="findClose" class="find-close" title="Close (Escape)">×</button>
+      </div>
+
       <!-- AI chat overlay — floats above the BrowserView -->
       <div class="ai-overlay" id="aiOverlay">
 
