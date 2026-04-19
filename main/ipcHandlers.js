@@ -145,7 +145,7 @@ async function runAgent(event, anthropic, message, sessionId) {
   const MAX_TURNS = 12
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
-    const response = await anthropic.messages.create({
+    const stream = anthropic.messages.stream({
       model: 'claude-sonnet-4-6',
       max_tokens: 4096,
       system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
@@ -153,12 +153,12 @@ async function runAgent(event, anthropic, message, sessionId) {
       messages,
     })
 
-    // Emit text blocks immediately
-    for (const block of response.content) {
-      if (block.type === 'text' && block.text.trim()) {
-        event.sender.send('agent-event', { sessionId, type: 'text', text: block.text })
-      }
-    }
+    // Stream text tokens live to the renderer
+    stream.on('text', (_, snapshot) => {
+      event.sender.send('agent-event', { sessionId, type: 'text', text: snapshot })
+    })
+
+    const response = await stream.finalMessage()
 
     if (response.stop_reason === 'end_turn') {
       messages.push({ role: 'assistant', content: response.content })

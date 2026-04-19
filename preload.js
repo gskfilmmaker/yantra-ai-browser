@@ -34,10 +34,11 @@ contextBridge.exposeInMainWorld('api', {
 
   // ── Event listeners (Main → Renderer) ──────────────────────────────────────
   on: {
-    tabUpdated:  (cb) => ipcRenderer.on('tab:updated',  (_, d) => cb(d)),
-    tabSwitched: (cb) => ipcRenderer.on('tab:switched', (_, d) => cb(d)),
-    tabClosed:   (cb) => ipcRenderer.on('tab:closed',   (_, d) => cb(d)),
-    agentEvent:  (cb) => ipcRenderer.on('agent-event',  (_, d) => cb(d)),
+    tabUpdated:  (cb) => ipcRenderer.on('tab:updated',   (_, d) => cb(d)),
+    tabSwitched: (cb) => ipcRenderer.on('tab:switched',  (_, d) => cb(d)),
+    tabClosed:   (cb) => ipcRenderer.on('tab:closed',    (_, d) => cb(d)),
+    agentEvent:  (cb) => ipcRenderer.on('agent-event',   (_, d) => cb(d)),
+    focusUrlBar: (cb) => ipcRenderer.on('focus-url-bar', ()    => cb()),
   },
 
   // Remove all listeners for a channel (cleanup)

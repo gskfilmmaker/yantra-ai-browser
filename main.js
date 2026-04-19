@@ -1,5 +1,5 @@
 'use strict'
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow, Menu } = require('electron')
 const path = require('path')
 const tabManager = require('./main/tabManager')
 const { register: registerIPC } = require('./main/ipcHandlers')
@@ -32,6 +32,70 @@ app.whenReady().then(() => {
 
   // Create initial browser tab (shows new-tab page until user navigates)
   tabManager.createTab({ type: 'browser', url: '' })
+
+  // ── Application menu with keyboard shortcuts ──────────────────────────────
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    {
+      label: 'Strawberry',
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'hide' }, { role: 'hideOthers' },
+        { type: 'separator' },
+        { role: 'quit' },
+      ],
+    },
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'New Tab',
+          accelerator: 'CmdOrCtrl+T',
+          click: () => tabManager.createTab({ type: 'browser', url: '' }),
+        },
+        {
+          label: 'Close Tab',
+          accelerator: 'CmdOrCtrl+W',
+          click: () => { const t = tabManager.getActiveTab(); if (t) tabManager.closeTab(t.id) },
+        },
+      ],
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' }, { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' },
+      ],
+    },
+    {
+      label: 'View',
+      submenu: [
+        {
+          label: 'Focus URL Bar',
+          accelerator: 'CmdOrCtrl+L',
+          click: () => mainWindow.webContents.send('focus-url-bar'),
+        },
+        {
+          label: 'Reload Page',
+          accelerator: 'CmdOrCtrl+R',
+          click: () => tabManager.reload(),
+        },
+        {
+          label: 'Go Back',
+          accelerator: 'CmdOrCtrl+[',
+          click: () => tabManager.goBack(),
+        },
+        {
+          label: 'Go Forward',
+          accelerator: 'CmdOrCtrl+]',
+          click: () => tabManager.goForward(),
+        },
+        { type: 'separator' },
+        { role: 'toggleDevTools' },
+      ],
+    },
+  ]))
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

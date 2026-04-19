@@ -18,6 +18,7 @@ api.on.tabSwitched(({ tabId, tabs: t }) => {
   if (!convos[tabId]) convos[tabId] = { items: [] }
   renderTabs()
   syncURL()
+  syncNavButtons(t.find(tab => tab.id === tabId))
   renderThread()
   scheduleBoundsUpdate()
 })
@@ -30,7 +31,7 @@ api.on.tabUpdated((tab) => {
   if (tab.id === activeTabId) {
     syncURL(tab)
     syncNavLoading(tab.loading)
-    // Hide new-tab page once a URL is navigating
+    syncNavButtons(tab)
     if (tab.url && tab.url !== 'about:blank') hideNewTabPage()
   }
 })
@@ -87,6 +88,11 @@ function syncURL(tab) {
   }
 }
 
+function syncNavButtons(tab) {
+  $('navBack').disabled    = !tab?.canGoBack
+  $('navForward').disabled = !tab?.canGoForward
+}
+
 function syncNavLoading(loading) {
   const btn = $('navReload')
   btn.innerHTML = loading
@@ -122,6 +128,14 @@ $('ntGo').addEventListener('click', () => navigate($('ntSearch').value))
 
 function hideNewTabPage() { $('newTabPage').classList.add('hidden') }
 function showNewTabPage() { $('newTabPage').classList.remove('hidden'); $('ntSearch').focus() }
+
+// Cmd+L from main menu focuses URL bar even when BrowserView has focus
+api.on.focusUrlBar(() => {
+  const input = $('urlInput')
+  if (input.dataset.realUrl) input.value = input.dataset.realUrl
+  input.focus()
+  input.select()
+})
 
 // Top right buttons
 $('btnChat').addEventListener('click', () => {

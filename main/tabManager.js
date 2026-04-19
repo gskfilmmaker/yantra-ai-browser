@@ -189,6 +189,9 @@ class TabManager {
   _allInfo() {
     return [...this.tabs.values()].map(t => ({
       id: t.id, type: t.type, url: t.url || '', title: t.title || 'New Tab', loading: !!t.loading,
+      favicon: t.favicon || null,
+      canGoBack:    t.view?.webContents.canGoBack()    || false,
+      canGoForward: t.view?.webContents.canGoForward() || false,
     }))
   }
 
@@ -227,6 +230,12 @@ class TabManager {
       this._emitTabUpdate(tabId)
     })
 
+    wc.on('page-favicon-updated', (_, favicons) => {
+      const t = this.tabs.get(tabId)
+      if (t && favicons.length > 0) t.favicon = favicons[0]
+      this._emitTabUpdate(tabId)
+    })
+
     // Open new-window requests as new browser tabs
     wc.setWindowOpenHandler(({ url }) => {
       this.createTab({ type: 'browser', url })
@@ -236,7 +245,13 @@ class TabManager {
 
   _emitTabUpdate(tabId) {
     const t = this.tabs.get(tabId)
-    if (t) this._emit('tab:updated', { id: t.id, type: t.type, url: t.url||'', title: t.title||'', loading: !!t.loading })
+    if (!t) return
+    this._emit('tab:updated', {
+      id: t.id, type: t.type, url: t.url||'', title: t.title||'', loading: !!t.loading,
+      favicon: t.favicon || null,
+      canGoBack:    t.view?.webContents.canGoBack()    || false,
+      canGoForward: t.view?.webContents.canGoForward() || false,
+    })
   }
 
   _emit(channel, data) {
