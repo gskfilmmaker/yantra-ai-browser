@@ -1,9 +1,7 @@
-const { app, BrowserWindow, ipcMain, webContents: electronWebContents } = require('electron')
+const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
 
 let mainWindow
-
-app.commandLine.appendSwitch('disable-features', 'OutOfBlinkCors')
 
 app.whenReady().then(() => {
   createWindow()
@@ -18,173 +16,203 @@ app.on('window-all-closed', () => {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1440,
-    height: 900,
-    minWidth: 900,
+    width: 1280,
+    height: 860,
+    minWidth: 800,
     minHeight: 600,
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 16, y: 14 },
-    backgroundColor: '#0f0f1a',
+    backgroundColor: '#ffffff',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      webviewTag: true,
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: false,
     },
   })
-
   mainWindow.loadFile(path.join(__dirname, 'src', 'index.html'))
 }
 
-// --- IPC Handlers ---
+// ─── HTTP helper (uses global fetch, available in Electron 28+ / Node 18+) ───
 
-ipcMain.handle('capture-screenshot', async (_event, webContentsId) => {
-  try {
-    const wc = electronWebContents.fromId(webContentsId)
-    if (!wc || wc.isDestroyed()) return null
-    const image = await wc.capturePage()
-    return image.toDataURL()
-  } catch (e) {
-    return null
+async function httpFetch(url, options = {}) {
+  const defaultHeaders = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/json,*/*',
   }
-})
+  const res = await fetch(url, { headers: { ...defaultHeaders, ...options.headers } })
+  return res
+}
 
-ipcMain.handle('execute-js', async (_event, webContentsId, code) => {
+// ─── Tools ────────────────────────────────────────────────────────────────────
+
+async function webSearch(query) {
   try {
-    const wc = electronWebContents.fromId(webContentsId)
-    if (!wc || wc.isDestroyed()) return null
-    return await wc.executeJavaScript(code)
-  } catch (e) {
-    return null
-  }
-})
+    const res = await httpFetch(
+      `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`
+    )
+    const data = await res.json()
+    const parts = []
 
-ipcMain.handle('get-page-content', async (_event, webContentsId) => {
+    if (data.AbstractText) {
+      parts.push(data.AbstractText)
+      if (data.AbstractURL) parts.push(`Source: ${data.AbstractURL}`)
+    }
+
+    if (data.Results && data.Results.length > 0) {
+      parts.push('\nTop results:')
+      data.Results.slice(0, 5).forEach(r => parts.push(`• ${r.Text} — ${r.FirstURL}`))
+    }
+
+    if (data.RelatedTopics && data.RelatedTopics.length > 0) {
+      parts.push('\nRelated:')
+      data.RelatedTopics.slice(0, 6).forEach(t => {
+        if (t.Text) parts.push(`• ${t.Text}${t.FirstURL ? ` — ${t.FirstURL}` : ''}`)
+      })
+    }
+
+    return parts.join('\n') || 'No instant results. Try fetching a specific URL for more details.'
+  } catch (e) {
+    return `Search failed: ${e.message}`
+  }
+}
+
+async function fetchWebpage(url) {
   try {
-    const wc = electronWebContents.fromId(webContentsId)
-    if (!wc || wc.isDestroyed()) return { url: '', title: '', text: '' }
-    const url = wc.getURL()
-    const title = wc.getTitle()
-    const text = await wc.executeJavaScript(
-      '(function(){ return (document.body ? document.body.innerText : "").slice(0,3000) })()'
-    ).catch(() => '')
-    return { url, title, text }
+    const res = await httpFetch(url)
+    const html = await res.text()
+    const text = html
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+      .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&#\d+;/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim()
+    return text.slice(0, 10000)
   } catch (e) {
-    return { url: '', title: '', text: '' }
+    return `Could not fetch page: ${e.message}`
   }
-})
+}
 
-ipcMain.handle('send-ai-message', async (event, { message, webContentsId, history }) => {
+// ─── Agent IPC ────────────────────────────────────────────────────────────────
+
+const TOOLS = [
+  {
+    name: 'web_search',
+    description: 'Search the web for current information, news, prices, facts, or any topic.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'The search query' }
+      },
+      required: ['query']
+    }
+  },
+  {
+    name: 'fetch_webpage',
+    description: 'Fetch and read the full text content of any webpage URL.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'The full URL to fetch' }
+      },
+      required: ['url']
+    }
+  }
+]
+
+const SYSTEM = `You are Strawberry, an intelligent AI research assistant. You help users research topics, find information, analyze data, and complete complex tasks autonomously.
+
+When given a task:
+- Use your tools proactively to gather real, current information
+- Show your reasoning and steps clearly
+- Cite sources with URLs when available
+- Be thorough, accurate, and helpful
+
+You have access to web search and webpage fetching. Use them whenever you need current or specific information.`
+
+ipcMain.handle('run-agent', async (event, { message, sessionId, history }) => {
   let Anthropic
-  try {
-    Anthropic = require('@anthropic-ai/sdk')
-  } catch (e) {
-    const err = 'Error: @anthropic-ai/sdk not installed. Run: npm install'
-    event.sender.send('ai-stream-done', err)
-    return err
+  try { Anthropic = require('@anthropic-ai/sdk') }
+  catch (e) {
+    event.sender.send('agent-event', { sessionId, type: 'error', text: '@anthropic-ai/sdk not installed. Run: npm install' })
+    return
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {
-    const err = 'Error: ANTHROPIC_API_KEY environment variable is not set. Please set it and restart the app.'
-    event.sender.send('ai-stream-done', err)
-    return err
+    event.sender.send('agent-event', { sessionId, type: 'error', text: 'ANTHROPIC_API_KEY is not set. Quit and relaunch with: ANTHROPIC_API_KEY=sk-ant-... npm start' })
+    return
   }
 
   const anthropic = new Anthropic()
-
-  let screenshot = null
-  let pageContent = { url: '', title: '', text: '' }
-
-  if (webContentsId) {
-    try {
-      const wc = electronWebContents.fromId(webContentsId)
-      if (wc && !wc.isDestroyed()) {
-        const image = await wc.capturePage()
-        screenshot = image.toBase64()
-        pageContent.url = wc.getURL()
-        pageContent.title = wc.getTitle()
-        pageContent.text = await wc.executeJavaScript(
-          '(function(){ return (document.body ? document.body.innerText : "").slice(0,2000) })()'
-        ).catch(() => '')
-      }
-    } catch (e) {
-      // page info unavailable, continue without it
-    }
-  }
-
-  const systemPrompt = `You are Strawberry, an intelligent AI browser companion. You help users browse the web, research topics, and automate browser tasks.
-
-You can:
-1. Answer questions about what's currently on the page (screenshots are included when available)
-2. Research any topic
-3. Automate browser interactions by generating action sequences
-
-When you want to perform browser automation, embed a JSON block like this in your response:
-\`\`\`automation
-{
-  "actions": [
-    {"type": "click", "selector": "CSS_SELECTOR"},
-    {"type": "type", "selector": "CSS_SELECTOR", "text": "TEXT_TO_TYPE"},
-    {"type": "navigate", "url": "https://example.com"},
-    {"type": "scroll", "direction": "down", "amount": 400},
-    {"type": "wait", "ms": 1000}
-  ]
-}
-\`\`\`
-
-Be concise, helpful, and proactive. When given a screenshot, always analyze what you see on the page.`
-
-  const messages = []
-
-  for (const h of (history || [])) {
-    messages.push({ role: h.role, content: h.content })
-  }
-
-  const userContent = []
-
-  if (screenshot) {
-    userContent.push({
-      type: 'image',
-      source: { type: 'base64', media_type: 'image/png', data: screenshot },
-    })
-  }
-
-  const contextPrefix = pageContent.url
-    ? `Current page: ${pageContent.url}\nPage title: ${pageContent.title}\n${pageContent.text ? `Page text excerpt:\n${pageContent.text}\n\n` : ''}`
-    : ''
-
-  userContent.push({ type: 'text', text: contextPrefix + message })
-  messages.push({ role: 'user', content: userContent })
-
-  let fullResponse = ''
+  const messages = [...(history || []), { role: 'user', content: message }]
+  const MAX_TURNS = 12
 
   try {
-    const stream = anthropic.messages.stream({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 2048,
-      system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
-      messages,
-    })
+    for (let turn = 0; turn < MAX_TURNS; turn++) {
+      const response = await anthropic.messages.create({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 4096,
+        system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
+        tools: TOOLS,
+        messages,
+      })
 
-    stream.on('text', (text) => {
-      fullResponse += text
-      if (!event.sender.isDestroyed()) {
-        event.sender.send('ai-stream-chunk', text)
+      // Emit any text blocks
+      const textBlocks = response.content.filter(b => b.type === 'text')
+      for (const block of textBlocks) {
+        if (block.text.trim()) {
+          event.sender.send('agent-event', { sessionId, type: 'text', text: block.text })
+        }
       }
-    })
 
-    await stream.finalMessage()
+      if (response.stop_reason === 'end_turn') break
 
-    if (!event.sender.isDestroyed()) {
-      event.sender.send('ai-stream-done', fullResponse)
+      if (response.stop_reason === 'tool_use') {
+        const toolBlocks = response.content.filter(b => b.type === 'tool_use')
+        const toolResults = []
+
+        for (const tb of toolBlocks) {
+          event.sender.send('agent-event', {
+            sessionId,
+            type: 'tool_call',
+            toolId: tb.id,
+            toolName: tb.name,
+            toolInput: tb.input,
+          })
+
+          let result = ''
+          try {
+            if (tb.name === 'web_search') result = await webSearch(tb.input.query)
+            else if (tb.name === 'fetch_webpage') result = await fetchWebpage(tb.input.url)
+            else result = 'Unknown tool'
+          } catch (e) {
+            result = `Error: ${e.message}`
+          }
+
+          event.sender.send('agent-event', {
+            sessionId,
+            type: 'tool_result',
+            toolId: tb.id,
+            toolName: tb.name,
+            result,
+          })
+
+          toolResults.push({ type: 'tool_result', tool_use_id: tb.id, content: result })
+        }
+
+        messages.push({ role: 'assistant', content: response.content })
+        messages.push({ role: 'user', content: toolResults })
+        continue
+      }
+
+      break
     }
-    return fullResponse
   } catch (e) {
-    const errMsg = `Error: ${e.message}`
-    if (!event.sender.isDestroyed()) {
-      event.sender.send('ai-stream-done', errMsg)
-    }
-    return errMsg
+    event.sender.send('agent-event', { sessionId, type: 'error', text: `Error: ${e.message}` })
   }
+
+  event.sender.send('agent-event', { sessionId, type: 'done' })
 })

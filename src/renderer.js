@@ -1,476 +1,346 @@
 'use strict'
 
-// ─── Tab state ────────────────────────────────────────────────────────────────
+// ─── Session state ────────────────────────────────────────────────────────────
 
-let tabs = []
-let activeTabId = null
-let tabIdCounter = 0
+let sessions = []
+let activeSessionId = null
+let sessionCounter = 0
+let isRunning = false
 
-function genId() { return ++tabIdCounter }
+function genId() { return ++sessionCounter }
 
-function createTab(url = '') {
+function createSession(title = 'New session') {
   const id = genId()
-  tabs.push({ id, url, title: 'New Tab', loading: false, favicon: '🌐' })
-
-  const webview = document.createElement('webview')
-  webview.id = `wv-${id}`
-  webview.style.position = 'absolute'
-  webview.style.inset = '0'
-  webview.style.display = 'none'
-  webview.setAttribute('allowpopups', '')
-  webview.setAttribute('partition', 'persist:strawberry')
-  if (url) webview.src = url
-
-  document.getElementById('webviewContainer').appendChild(webview)
-  bindWebviewEvents(webview, id)
-
-  if (!url) renderNewTabPage(id)
-  switchToTab(id)
+  sessions.push({ id, title, items: [], history: [] })
+  switchSession(id)
+  renderTabs()
   return id
 }
 
-function bindWebviewEvents(webview, id) {
-  webview.addEventListener('did-start-loading', () => {
-    setTabProp(id, 'loading', true)
-    if (activeTabId === id) syncNavBar()
-  })
-
-  webview.addEventListener('did-stop-loading', () => {
-    setTabProp(id, 'loading', false)
-    if (activeTabId === id) syncNavBar()
-  })
-
-  webview.addEventListener('page-title-updated', (e) => {
-    setTabProp(id, 'title', e.title || 'Untitled')
-    renderTabs()
-  })
-
-  webview.addEventListener('page-favicon-updated', (e) => {
-    if (e.favicons && e.favicons[0]) setTabProp(id, 'faviconUrl', e.favicons[0])
-  })
-
-  webview.addEventListener('did-navigate', (e) => {
-    setTabProp(id, 'url', e.url)
-    if (activeTabId === id) {
-      document.getElementById('urlBar').value = e.url
-      syncNavBar()
-    }
-  })
-
-  webview.addEventListener('did-navigate-in-page', (e) => {
-    setTabProp(id, 'url', e.url)
-    if (activeTabId === id) document.getElementById('urlBar').value = e.url
-  })
-
-  webview.addEventListener('new-window', (e) => {
-    createTab(e.url)
-  })
-}
-
-function setTabProp(id, key, val) {
-  const t = tabs.find(t => t.id === id)
-  if (t) t[key] = val
-}
-
-function switchToTab(id) {
-  // Remove new-tab overlay if switching to an existing webview
-  const existing = document.getElementById('newTabOverlay')
-  if (existing) existing.remove()
-
-  // Hide all webviews
-  tabs.forEach(t => {
-    const wv = document.getElementById(`wv-${t.id}`)
-    if (wv) wv.style.display = 'none'
-  })
-
-  activeTabId = id
-  const wv = document.getElementById(`wv-${id}`)
-  if (wv) wv.style.display = 'block'
-
-  const tab = tabs.find(t => t.id === id)
-  if (tab) {
-    document.getElementById('urlBar').value = tab.url || ''
-    if (!tab.url) renderNewTabPage(id)
-  }
-
-  syncNavBar()
+function switchSession(id) {
+  activeSessionId = id
+  renderFeed()
   renderTabs()
+  updateBreadcrumb()
 }
 
-function closeTab(id) {
-  const idx = tabs.findIndex(t => t.id === id)
+function closeSession(id) {
+  const idx = sessions.findIndex(s => s.id === id)
   if (idx === -1) return
-
-  const wv = document.getElementById(`wv-${id}`)
-  if (wv) wv.remove()
-
-  const overlay = document.getElementById('newTabOverlay')
-  if (overlay && activeTabId === id) overlay.remove()
-
-  tabs.splice(idx, 1)
-
-  if (tabs.length === 0) { createTab(); return }
-
-  if (activeTabId === id) {
-    switchToTab(tabs[Math.min(idx, tabs.length - 1)].id)
+  sessions.splice(idx, 1)
+  if (sessions.length === 0) { createSession(); return }
+  if (activeSessionId === id) {
+    switchSession(sessions[Math.min(idx, sessions.length - 1)].id)
   } else {
     renderTabs()
   }
 }
 
+function activeSession() {
+  return sessions.find(s => s.id === activeSessionId)
+}
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+
 function renderTabs() {
-  const bar = document.getElementById('tabBar')
-  bar.innerHTML = ''
-  tabs.forEach(tab => {
+  const list = document.getElementById('tabsList')
+  list.innerHTML = ''
+  sessions.forEach(s => {
     const el = document.createElement('div')
-    el.className = `tab${tab.id === activeTabId ? ' active' : ''}`
-    el.dataset.id = tab.id
+    el.className = `tab${s.id === activeSessionId ? ' active' : ''}`
+    el.innerHTML = `
+      <span class="tab-icon">🍓</span>
+      <span class="tab-label">${esc(s.title)}</span>
+      <button class="tab-close" data-id="${s.id}" title="Close">×</button>
+    `
+    el.addEventListener('click', (e) => {
+      if (!e.target.classList.contains('tab-close')) switchSession(s.id)
+    })
+    list.appendChild(el)
+  })
+  list.querySelectorAll('.tab-close').forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); closeSession(+btn.dataset.id) })
+  })
+}
 
-    const faviconEl = document.createElement('span')
-    faviconEl.className = 'tab-favicon'
-    if (tab.faviconUrl) {
-      const img = document.createElement('img')
-      img.src = tab.faviconUrl
-      img.width = 14
-      img.height = 14
-      img.onerror = () => { img.style.display = 'none' }
-      faviconEl.appendChild(img)
-    } else {
-      faviconEl.textContent = tab.loading ? '⋯' : '🌐'
+// ─── Feed rendering ───────────────────────────────────────────────────────────
+
+function renderFeed() {
+  const feed = document.getElementById('feed')
+  const session = activeSession()
+  if (!session || session.items.length === 0) {
+    feed.innerHTML = `
+      <div class="feed-empty" id="feedEmpty">
+        <div class="feed-empty-icon">🍓</div>
+        <div class="feed-empty-title">What can I help you with?</div>
+        <div class="feed-empty-sub">Research topics, analyze pages, automate tasks — just ask.</div>
+      </div>`
+    return
+  }
+  feed.innerHTML = ''
+  session.items.forEach(item => feed.appendChild(renderItem(item)))
+  scrollFeed()
+}
+
+function renderItem(item) {
+  const wrap = document.createElement('div')
+  wrap.className = 'feed-item'
+  wrap.id = `item-${item.id}`
+  wrap.innerHTML = buildItemHTML(item)
+  return wrap
+}
+
+function buildItemHTML(item) {
+  switch (item.type) {
+    case 'user':
+      return `<div class="msg-user"><div class="msg-user-bubble">${esc(item.text)}</div></div>`
+
+    case 'text':
+      return `<div class="msg-ai"><div class="msg-ai-content">${renderMarkdown(item.text)}</div></div>`
+
+    case 'tool_call': {
+      const icon = item.toolName === 'web_search' ? '🔍' : '📄'
+      const label = item.toolName === 'web_search'
+        ? `Searching for "${item.toolInput.query}"`
+        : `Fetching ${item.toolInput.url}`
+      const status = item.status || 'running'
+      const badgeLabel = status === 'running' ? 'Working…' : status === 'done' ? '✓ Done' : '✗ Error'
+      return `
+        <div class="tool-card ${status}">
+          <span class="tool-icon">${icon}</span>
+          <div class="tool-body">
+            <div class="tool-title">${esc(label)}</div>
+            ${item.summary ? `<div class="tool-subtitle">${esc(item.summary)}</div>` : ''}
+          </div>
+          <div class="tool-badge ${status}">
+            ${status === 'running' ? '<div class="spinner"></div>' : ''}
+            ${badgeLabel}
+          </div>
+        </div>`
     }
 
-    const titleEl = document.createElement('span')
-    titleEl.className = 'tab-title'
-    titleEl.textContent = tab.loading ? 'Loading…' : (tab.title || 'New Tab')
+    case 'insight':
+      return `
+        <div class="insight-card">
+          <span class="insight-icon">💡</span>
+          <span>${esc(item.text)}</span>
+        </div>`
 
-    const closeEl = document.createElement('button')
-    closeEl.className = 'tab-close'
-    closeEl.textContent = '×'
-    closeEl.title = 'Close tab'
-    closeEl.addEventListener('click', (e) => { e.stopPropagation(); closeTab(tab.id) })
+    case 'feedback':
+      return `<div class="feedback-row">
+        <button class="feedback-btn">👍</button>
+        <button class="feedback-btn">👎</button>
+      </div>`
 
-    el.appendChild(faviconEl)
-    el.appendChild(titleEl)
-    el.appendChild(closeEl)
-    el.addEventListener('click', () => switchToTab(tab.id))
-    bar.appendChild(el)
-  })
-}
+    case 'error':
+      return `<div class="tool-card error">
+        <span class="tool-icon">⚠️</span>
+        <div class="tool-body"><div class="tool-title">${esc(item.text)}</div></div>
+        <div class="tool-badge error">Error</div>
+      </div>`
 
-// ─── New-tab page ─────────────────────────────────────────────────────────────
-
-function renderNewTabPage(id) {
-  const container = document.getElementById('webviewContainer')
-  const old = document.getElementById('newTabOverlay')
-  if (old) old.remove()
-
-  const overlay = document.createElement('div')
-  overlay.id = 'newTabOverlay'
-  overlay.className = 'new-tab-page'
-  overlay.innerHTML = `
-    <div class="new-tab-logo">🍓</div>
-    <div class="new-tab-title">Good to see you.</div>
-    <div class="new-tab-search">
-      <input id="ntSearch" placeholder="Search or enter a URL…" autocomplete="off" spellcheck="false"/>
-      <button class="new-tab-search-btn" id="ntSearchBtn">Search</button>
-    </div>
-  `
-  container.appendChild(overlay)
-
-  const input = overlay.querySelector('#ntSearch')
-  const btn = overlay.querySelector('#ntSearchBtn')
-
-  const go = () => {
-    const val = input.value.trim()
-    if (val) navigateTo(val)
+    default:
+      return ''
   }
-
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') go() })
-  btn.addEventListener('click', go)
-  input.focus()
 }
 
-// ─── Navigation ───────────────────────────────────────────────────────────────
-
-function navigateTo(raw) {
-  let url = raw.trim()
-  if (!url) return
-
-  const overlay = document.getElementById('newTabOverlay')
-  if (overlay) overlay.remove()
-
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    if (/^[\w-]+(\.[a-z]{2,})(\/.*)?$/.test(url) && !url.includes(' ')) {
-      url = 'https://' + url
-    } else {
-      url = `https://www.google.com/search?q=${encodeURIComponent(url)}`
-    }
-  }
-
-  const wv = getActiveWebview()
-  if (wv) {
-    wv.src = url
-    setTabProp(activeTabId, 'url', url)
-  }
-
-  document.getElementById('urlBar').value = url
+function patchItem(itemId) {
+  const session = activeSession()
+  if (!session) return
+  const item = session.items.find(i => i.id === itemId)
+  if (!item) return
+  const el = document.getElementById(`item-${itemId}`)
+  if (!el) return
+  el.innerHTML = buildItemHTML(item)
 }
 
-function getActiveWebview() {
-  if (!activeTabId) return null
-  return document.getElementById(`wv-${activeTabId}`)
+function appendItem(item) {
+  const session = activeSession()
+  if (!session) return
+
+  // Remove empty state
+  const empty = document.getElementById('feedEmpty')
+  if (empty) empty.remove()
+
+  session.items.push(item)
+  const feed = document.getElementById('feed')
+  feed.appendChild(renderItem(item))
+  scrollFeed()
 }
 
-function syncNavBar() {
-  const wv = getActiveWebview()
-  const tab = tabs.find(t => t.id === activeTabId)
-
-  document.getElementById('backBtn').disabled = wv ? !wv.canGoBack() : true
-  document.getElementById('forwardBtn').disabled = wv ? !wv.canGoForward() : true
-
-  const refreshBtn = document.getElementById('refreshBtn')
-  const isLoading = tab ? tab.loading : false
-  refreshBtn.title = isLoading ? 'Stop' : 'Refresh'
-  refreshBtn.innerHTML = isLoading
-    ? `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`
-    : `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M12 2.5A5.5 5.5 0 1 0 13 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="9,1 12,2.5 10.5,5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`
+function scrollFeed() {
+  const feed = document.getElementById('feed')
+  feed.scrollTop = feed.scrollHeight
 }
 
-// ─── Nav bar events ───────────────────────────────────────────────────────────
+function updateBreadcrumb() {
+  const session = activeSession()
+  document.getElementById('sessionTitle').textContent = session ? session.title : 'New session'
+}
 
-document.getElementById('backBtn').addEventListener('click', () => getActiveWebview()?.goBack())
-document.getElementById('forwardBtn').addEventListener('click', () => getActiveWebview()?.goForward())
+// ─── Agent events ─────────────────────────────────────────────────────────────
 
-document.getElementById('refreshBtn').addEventListener('click', () => {
-  const wv = getActiveWebview()
-  if (!wv) return
-  const tab = tabs.find(t => t.id === activeTabId)
-  tab?.loading ? wv.stop() : wv.reload()
-})
+// Map toolId → itemId
+const toolCardMap = {}
+// Current AI text item id
+let currentTextItemId = null
 
-document.getElementById('urlBar').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') navigateTo(e.target.value)
-})
+window.api.onAgentEvent((event) => {
+  if (event.sessionId !== activeSessionId) return
 
-document.getElementById('urlBar').addEventListener('focus', (e) => e.target.select())
-
-document.getElementById('newTabBtn').addEventListener('click', () => createTab())
-
-// ─── AI Panel ─────────────────────────────────────────────────────────────────
-
-let aiHistory = []
-let aiStreaming = false
-
-document.getElementById('aiToggle').addEventListener('click', () => {
-  document.getElementById('aiPanel').classList.toggle('open')
-})
-document.getElementById('aiClose').addEventListener('click', () => {
-  document.getElementById('aiPanel').classList.remove('open')
-})
-
-document.getElementById('sendBtn').addEventListener('click', sendAiMessage)
-document.getElementById('aiInput').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAiMessage() }
-})
-
-document.getElementById('captureBtn').addEventListener('click', async () => {
-  const wv = getActiveWebview()
-  if (!wv) return
-  const input = document.getElementById('aiInput')
-  input.value = (input.value ? input.value + '\n' : '') + 'Analyze what you see on the current page and summarize it.'
-  input.focus()
-})
-
-async function sendAiMessage() {
-  if (aiStreaming) return
-
-  const inputEl = document.getElementById('aiInput')
-  const message = inputEl.value.trim()
-  if (!message) return
-
-  inputEl.value = ''
-  aiStreaming = true
-  document.getElementById('sendBtn').disabled = true
-
-  appendMessage('user', escapeHtml(message))
-
-  const wv = getActiveWebview()
-  let webContentsId = null
-  if (wv) {
-    try { webContentsId = wv.getWebContentsId() } catch (_) {}
-  }
-
-  const { el: assistantEl, bubble } = appendStreamingMessage()
-
-  window.api.onAiChunk((chunk) => {
-    // Remove cursor, append text, re-add cursor
-    const cursor = bubble.querySelector('.stream-cursor')
-    if (cursor) cursor.remove()
-    // Accumulate raw text in dataset
-    bubble.dataset.raw = (bubble.dataset.raw || '') + chunk
-    bubble.innerHTML = renderMarkdown(bubble.dataset.raw)
-    bubble.insertAdjacentHTML('beforeend', '<span class="stream-cursor"></span>')
-    scrollMessages()
-  })
-
-  window.api.onAiDone((fullResponse) => {
-    aiStreaming = false
-    document.getElementById('sendBtn').disabled = false
-
-    const cursor = bubble.querySelector('.stream-cursor')
-    if (cursor) cursor.remove()
-
-    bubble.innerHTML = renderMarkdown(fullResponse)
-    delete bubble.dataset.raw
-
-    aiHistory.push({ role: 'user', content: message })
-    aiHistory.push({ role: 'assistant', content: fullResponse })
-    if (aiHistory.length > 20) aiHistory = aiHistory.slice(-20)
-
-    const autoMatch = fullResponse.match(/```automation\n([\s\S]*?)```/)
-    if (autoMatch) {
-      try {
-        const payload = JSON.parse(autoMatch[1])
-        executeAutomation(payload.actions, webContentsId)
-      } catch (_) {}
+  switch (event.type) {
+    case 'tool_call': {
+      const item = { id: `tc-${event.toolId}`, type: 'tool_call', toolName: event.toolName, toolInput: event.toolInput, status: 'running' }
+      toolCardMap[event.toolId] = item.id
+      currentTextItemId = null
+      appendItem(item)
+      break
     }
 
-    scrollMessages()
-  })
-
-  await window.api.sendAiMessage({
-    message,
-    webContentsId,
-    history: aiHistory,
-  })
-}
-
-function appendMessage(role, htmlContent) {
-  const msgs = document.getElementById('aiMessages')
-  const el = document.createElement('div')
-  el.className = `ai-message ${role}`
-  el.innerHTML = `<div class="message-bubble">${htmlContent}</div>`
-  msgs.appendChild(el)
-  scrollMessages()
-  return el
-}
-
-function appendStreamingMessage() {
-  const msgs = document.getElementById('aiMessages')
-  const el = document.createElement('div')
-  el.className = 'ai-message assistant'
-  el.innerHTML = '<div class="message-bubble"><span class="stream-cursor"></span></div>'
-  msgs.appendChild(el)
-  scrollMessages()
-  return { el, bubble: el.querySelector('.message-bubble') }
-}
-
-function scrollMessages() {
-  const msgs = document.getElementById('aiMessages')
-  msgs.scrollTop = msgs.scrollHeight
-}
-
-// ─── Markdown renderer (minimal) ──────────────────────────────────────────────
-
-function renderMarkdown(text) {
-  let html = escapeHtml(text)
-
-  // Code blocks
-  html = html.replace(/```[\w]*\n([\s\S]*?)```/g, (_, code) => {
-    if (_.startsWith('```automation')) {
-      return '<span class="automation-badge">⚡ Automation executed</span>'
+    case 'tool_result': {
+      const itemId = toolCardMap[event.toolId]
+      if (!itemId) break
+      const session = activeSession()
+      const item = session?.items.find(i => i.id === itemId)
+      if (!item) break
+      item.status = 'done'
+      // Generate a short summary from result
+      const firstLine = event.result.split('\n').find(l => l.trim()) || ''
+      item.summary = firstLine.slice(0, 80) + (firstLine.length > 80 ? '…' : '')
+      patchItem(itemId)
+      scrollFeed()
+      break
     }
-    return `<pre><code>${code}</code></pre>`
-  })
 
-  // Inline code
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
-
-  // Bold
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-
-  // Italic
-  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>')
-
-  // Line breaks
-  html = html.replace(/\n/g, '<br>')
-
-  return html
-}
-
-function escapeHtml(str) {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
-// ─── Browser automation ───────────────────────────────────────────────────────
-
-async function executeAutomation(actions, webContentsId) {
-  if (!webContentsId || !Array.isArray(actions)) return
-
-  for (const action of actions) {
-    try {
-      switch (action.type) {
-        case 'click':
-          await window.api.executeJs(webContentsId, `
-            (function(){
-              var el = document.querySelector(${JSON.stringify(action.selector)});
-              if(el){ el.click(); return true; }
-              return false;
-            })()
-          `)
-          break
-
-        case 'type':
-          await window.api.executeJs(webContentsId, `
-            (function(){
-              var el = document.querySelector(${JSON.stringify(action.selector)});
-              if(el){
-                el.focus();
-                el.value = ${JSON.stringify(action.text || '')};
-                el.dispatchEvent(new Event('input',{bubbles:true}));
-                el.dispatchEvent(new Event('change',{bubbles:true}));
-                return true;
-              }
-              return false;
-            })()
-          `)
-          break
-
-        case 'navigate':
-          navigateTo(action.url)
-          break
-
-        case 'scroll':
-          await window.api.executeJs(webContentsId, `
-            window.scrollBy(0, ${action.direction === 'up' ? -(action.amount || 300) : (action.amount || 300)})
-          `)
-          break
-
-        case 'wait':
-          await new Promise(r => setTimeout(r, action.ms || 1000))
-          break
-
-        case 'extract': {
-          const val = await window.api.executeJs(webContentsId, `
-            (function(){
-              var el = document.querySelector(${JSON.stringify(action.selector)});
-              return el ? el.innerText : null;
-            })()
-          `)
-          if (val) appendMessage('assistant', `<strong>Extracted:</strong> ${escapeHtml(String(val))}`)
+    case 'text': {
+      if (currentTextItemId) {
+        const session = activeSession()
+        const item = session?.items.find(i => i.id === currentTextItemId)
+        if (item) {
+          item.text = event.text
+          patchItem(currentTextItemId)
+          scrollFeed()
           break
         }
       }
-    } catch (e) {
-      // continue with remaining actions
+      const item = { id: `txt-${Date.now()}`, type: 'text', text: event.text }
+      currentTextItemId = item.id
+      appendItem(item)
+      break
+    }
+
+    case 'error': {
+      appendItem({ id: `err-${Date.now()}`, type: 'error', text: event.text })
+      finishRun()
+      break
+    }
+
+    case 'done': {
+      currentTextItemId = null
+      appendItem({ id: `fb-${Date.now()}`, type: 'feedback' })
+      finishRun()
+      break
     }
   }
+})
+
+function finishRun() {
+  isRunning = false
+  document.getElementById('sendBtn').disabled = false
+  document.getElementById('mainInput').disabled = false
+}
+
+// ─── Send message ─────────────────────────────────────────────────────────────
+
+async function sendMessage() {
+  if (isRunning) return
+  const input = document.getElementById('mainInput')
+  const text = input.value.trim()
+  if (!text) return
+
+  input.value = ''
+  resizeInput()
+  isRunning = true
+  document.getElementById('sendBtn').disabled = true
+
+  const session = activeSession()
+
+  // Update session title from first message
+  if (session.items.length === 0) {
+    session.title = text.slice(0, 45) + (text.length > 45 ? '…' : '')
+    renderTabs()
+    updateBreadcrumb()
+  }
+
+  appendItem({ id: `u-${Date.now()}`, type: 'user', text })
+
+  // Build history for Claude (only user/assistant pairs, not tool cards)
+  const history = session.history.slice()
+
+  window.api.runAgent({ message: text, sessionId: session.id, history })
+
+  // Add to history after sending
+  session.history.push({ role: 'user', content: text })
+}
+
+// ─── Input auto-resize ────────────────────────────────────────────────────────
+
+function resizeInput() {
+  const el = document.getElementById('mainInput')
+  el.style.height = 'auto'
+  el.style.height = Math.min(el.scrollHeight, 180) + 'px'
+}
+
+document.getElementById('mainInput').addEventListener('input', resizeInput)
+document.getElementById('mainInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
+})
+
+document.getElementById('sendBtn').addEventListener('click', sendMessage)
+
+// ─── Tabs / sessions ──────────────────────────────────────────────────────────
+
+document.getElementById('tabNewBtn').addEventListener('click', () => createSession())
+document.getElementById('sbNewBtn').addEventListener('click', () => createSession())
+
+// ─── Profile popup ────────────────────────────────────────────────────────────
+
+document.getElementById('avatarBtn').addEventListener('click', (e) => {
+  e.stopPropagation()
+  document.getElementById('profilePopup').classList.toggle('open')
+})
+document.addEventListener('click', () => {
+  document.getElementById('profilePopup').classList.remove('open')
+})
+document.getElementById('profilePopup').addEventListener('click', (e) => e.stopPropagation())
+
+// ─── Markdown renderer ────────────────────────────────────────────────────────
+
+function renderMarkdown(raw) {
+  let t = esc(raw)
+  // Code blocks
+  t = t.replace(/```([\s\S]*?)```/g, (_, c) => `<pre><code>${c}</code></pre>`)
+  // Inline code
+  t = t.replace(/`([^`\n]+)`/g, '<code>$1</code>')
+  // Bold
+  t = t.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+  // Italic
+  t = t.replace(/\*([^*\n]+)\*/g, '<em>$1</em>')
+  // URLs → links
+  t = t.replace(/(https?:\/\/[^\s<>"]+)/g, '<a href="#" onclick="return false">$1</a>')
+  // Bullet points
+  t = t.replace(/^• (.+)$/gm, '<li>$1</li>')
+  t = t.replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>')
+  // Line breaks
+  t = t.replace(/\n/g, '<br>')
+  return t
+}
+
+function esc(str) {
+  if (typeof str !== 'string') return ''
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 
-createTab()
+createSession()
