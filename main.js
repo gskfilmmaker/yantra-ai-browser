@@ -30,8 +30,8 @@ app.whenReady().then(() => {
   // Register all IPC handlers
   registerIPC()
 
-  // Create initial session tab
-  tabManager.createTab({ type: 'session' })
+  // Create initial browser tab (shows new-tab page until user navigates)
+  tabManager.createTab({ type: 'browser', url: '' })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

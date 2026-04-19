@@ -12,12 +12,13 @@ contextBridge.exposeInMainWorld('api', {
 
   // ── Browser navigation ──────────────────────────────────────────────────────
   browser: {
-    navigate:    (url) => ipcRenderer.invoke('browser:navigate', url),
-    goBack:      ()    => ipcRenderer.invoke('browser:goBack'),
-    goForward:   ()    => ipcRenderer.invoke('browser:goForward'),
-    reload:      ()    => ipcRenderer.invoke('browser:reload'),
-    getContent:  (id)  => ipcRenderer.invoke('browser:getContent', id),
-    getAllContent: ()   => ipcRenderer.invoke('browser:getAllContent'),
+    navigate:    (url)    => ipcRenderer.invoke('browser:navigate', url),
+    goBack:      ()       => ipcRenderer.invoke('browser:goBack'),
+    goForward:   ()       => ipcRenderer.invoke('browser:goForward'),
+    reload:      ()       => ipcRenderer.invoke('browser:reload'),
+    getContent:  (id)     => ipcRenderer.invoke('browser:getContent', id),
+    getAllContent: ()      => ipcRenderer.invoke('browser:getAllContent'),
+    setBounds:   (bounds) => ipcRenderer.invoke('browser:setBounds', bounds),
   },
 
   // ── AI agent ────────────────────────────────────────────────────────────────

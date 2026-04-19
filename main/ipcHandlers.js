@@ -133,10 +133,15 @@ Rules:
 - Be specific, cite URLs as sources, and present findings clearly
 - When asked to summarize a page, ALWAYS use get_current_page first`
 
+// ─── Per-session conversation history (server-side) ──────────────────────────
+
+const sessionHistory = new Map()
+
 // ─── Agent loop ───────────────────────────────────────────────────────────────
 
-async function runAgent(event, anthropic, message, sessionId, history) {
-  const messages = [...(history || []), { role: 'user', content: message }]
+async function runAgent(event, anthropic, message, sessionId) {
+  const prior = sessionHistory.get(sessionId) || []
+  const messages = [...prior, { role: 'user', content: message }]
   const MAX_TURNS = 12
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
@@ -155,7 +160,10 @@ async function runAgent(event, anthropic, message, sessionId, history) {
       }
     }
 
-    if (response.stop_reason === 'end_turn') break
+    if (response.stop_reason === 'end_turn') {
+      messages.push({ role: 'assistant', content: response.content })
+      break
+    }
 
     if (response.stop_reason === 'tool_use') {
       const toolBlocks = response.content.filter(b => b.type === 'tool_use')
@@ -207,6 +215,9 @@ async function runAgent(event, anthropic, message, sessionId, history) {
 
     break
   }
+
+  // Persist conversation so next message has full context
+  sessionHistory.set(sessionId, messages)
 }
 
 // ─── Register all IPC handlers ────────────────────────────────────────────────
@@ -223,15 +234,16 @@ function register() {
   ipcMain.handle('browser:goBack',     ()       => tabManager.goBack())
   ipcMain.handle('browser:goForward',  ()       => tabManager.goForward())
   ipcMain.handle('browser:reload',     ()       => tabManager.reload())
-  ipcMain.handle('browser:getContent', (_, id)  => tabManager.getPageContent(id))
-  ipcMain.handle('browser:getAllContent', ()     => tabManager.getAllTabsContent())
+  ipcMain.handle('browser:getContent',    (_, id)     => tabManager.getPageContent(id))
+  ipcMain.handle('browser:getAllContent', ()          => tabManager.getAllTabsContent())
+  ipcMain.handle('browser:setBounds',     (_, bounds) => tabManager.setBrowserBounds(bounds))
 
   // Memory
   ipcMain.handle('memory:save',       (_, e)  => memoryStore.save(e))
   ipcMain.handle('memory:getHistory', (_, n)  => memoryStore.getHistory(n))
 
   // Agent
-  ipcMain.handle('agent:run', async (event, { message, sessionId, history }) => {
+  ipcMain.handle('agent:run', async (event, { message, sessionId }) => {
     let Anthropic
     try { Anthropic = require('@anthropic-ai/sdk') } catch (e) {
       event.sender.send('agent-event', { sessionId, type: 'error', text: 'Run: npm install' })
@@ -243,7 +255,7 @@ function register() {
     }
     const anthropic = new Anthropic()
     try {
-      await runAgent(event, anthropic, message, sessionId, history)
+      await runAgent(event, anthropic, message, sessionId)
     } catch (e) {
       event.sender.send('agent-event', { sessionId, type: 'error', text: `Error: ${e.message}` })
     }

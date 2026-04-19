@@ -167,8 +167,13 @@ class TabManager {
   _recalcBounds() {
     if (!this._win) return
     const { width, height } = this._win.getContentBounds()
-    const TAB_H = 40, NAV_H = 44, CHAT_H = 70
-    this.setBrowserBounds({ x: 0, y: TAB_H + NAV_H, width, height: height - TAB_H - NAV_H - CHAT_H })
+    const TAB_H = 40, NAV_H = 44, CHAT_H = 70, SIDEBAR_W = 52
+    this.setBrowserBounds({
+      x: SIDEBAR_W,
+      y: TAB_H + NAV_H,
+      width: width - SIDEBAR_W,
+      height: height - TAB_H - NAV_H - CHAT_H,
+    })
   }
 
   // ── Info helpers ───────────────────────────────────────────────────────────

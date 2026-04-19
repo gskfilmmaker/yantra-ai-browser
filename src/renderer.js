@@ -7,14 +7,15 @@ let tabs = []           // [{id, url, title, loading, favicon}]
 let activeTabId = null
 let isRunning = false
 
-// Per-tab conversation: tabId → {items:[], history:[]}
+// Per-tab conversation cards: tabId → {items:[]}
+// Conversation history lives in the main process (sessionHistory Map)
 const convos = {}
 
 // ─── IPC event wiring ─────────────────────────────────────────────────────────
 
 api.on.tabSwitched(({ tabId, tabs: t }) => {
   tabs = t; activeTabId = tabId
-  if (!convos[tabId]) convos[tabId] = { items: [], history: [] }
+  if (!convos[tabId]) convos[tabId] = { items: [] }
   renderTabs()
   syncURL()
   renderThread()
@@ -197,7 +198,7 @@ function onDragUp() {
 
 // ─── AI Thread ────────────────────────────────────────────────────────────────
 
-function convo() { return convos[activeTabId] || { items: [], history: [] } }
+function convo() { return convos[activeTabId] || { items: [] } }
 
 function renderThread() {
   const thread = $('aiThread')
@@ -343,20 +344,19 @@ async function sendMessage(prefill) {
   if (!text) return
   if (!prefill) { inputEl.value = ''; resizeAiInput() }
 
-  const c = convos[activeTabId]
-  if (!c) return
+  if (!convos[activeTabId]) return
 
   isRunning = true
   $('aiSend').disabled = true
+  $('aiInput').disabled = true
 
   // Update session tab label
   $('sessionTab').textContent = text.slice(0, 30) + (text.length > 30 ? '…' : '')
 
   addCard({ id: `u-${Date.now()}`, type: 'user', text })
-  const history = c.history.slice()
-  c.history.push({ role: 'user', content: text })
 
-  api.agent.run({ message: text, sessionId: activeTabId, history })
+  // History is managed server-side per sessionId
+  api.agent.run({ message: text, sessionId: activeTabId })
 }
 
 $('aiSend').addEventListener('click', () => sendMessage())
