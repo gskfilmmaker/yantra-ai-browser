@@ -8,58 +8,86 @@
 <body>
   <div class="app">
 
-    <!-- Chrome-style tab strip -->
+    <!-- ── Tab strip ───────────────────────────────────────────── -->
     <div class="tab-strip" id="tabStrip">
       <div class="traffic-gap"></div>
       <div class="tabs-list" id="tabsList"></div>
-      <button class="tab-new" id="tabNewBtn" title="New session">+</button>
+      <button class="tab-new" id="tabNewSession" title="New AI session">+</button>
+      <button class="tab-new-browser" id="tabNewBrowser" title="New browser tab">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5.5" stroke="currentColor" stroke-width="1.4"/><path d="M1 6.5h11M6.5 1c-1.5 2-2 3.5-2 5.5s.5 3.5 2 5.5M6.5 1c1.5 2 2 3.5 2 5.5s-.5 3.5-2 5.5" stroke="currentColor" stroke-width="1.2"/></svg>
+      </button>
     </div>
 
+    <!-- ── Browser nav bar (shown only for browser tabs) ────────── -->
+    <div class="nav-bar" id="navBar" style="display:none">
+      <button class="nav-btn" id="navBack" title="Back" disabled>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="nav-btn" id="navForward" title="Forward" disabled>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 2l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="nav-btn" id="navReload" title="Reload">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M12 2.5A5.5 5.5 0 1 0 13 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="9,1 12,2.5 10.5,5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="url-wrap">
+        <svg class="url-lock" width="11" height="11" viewBox="0 0 11 11" fill="none"><rect x="1" y="5" width="9" height="5.5" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M3 5V3.5a2.5 2.5 0 015 0V5" stroke="currentColor" stroke-width="1.2"/></svg>
+        <input class="url-input" id="urlInput" type="text" placeholder="Search or enter URL…" autocomplete="off" spellcheck="false"/>
+      </div>
+    </div>
+
+    <!-- ── Workspace ─────────────────────────────────────────────── -->
     <div class="workspace">
 
-      <!-- Narrow left sidebar -->
+      <!-- Sidebar -->
       <div class="sidebar">
         <div class="sb-logo">🍓</div>
-        <button class="sb-btn" id="sbNewBtn" title="New session">
+        <button class="sb-btn" id="sbNewSession" title="New AI session">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </button>
-        <button class="sb-btn" title="Upload">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 11v2a1 1 0 001 1h10a1 1 0 001-1v-2M8 2v9M5 5l3-3 3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <button class="sb-btn" id="sbNewBrowser" title="Open browser tab">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.5"/><path d="M1.5 8h13M8 1.5c-2 2.5-2.5 4-2.5 6.5s.5 4 2.5 6.5M8 1.5c2 2.5 2.5 4 2.5 6.5S10 12 8 14.5" stroke="currentColor" stroke-width="1.3"/></svg>
         </button>
-        <button class="sb-btn" title="History">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.6"/><path d="M8 5v3.5l2 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <button class="sb-btn" title="History" id="sbHistory">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3.5l2 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         </button>
         <div class="sb-spacer"></div>
-        <button class="sb-btn sb-avatar" id="avatarBtn" title="Account">GK</button>
+        <button class="sb-btn sb-avatar" id="avatarBtn">GK</button>
       </div>
 
-      <!-- Main column -->
+      <!-- Main canvas -->
       <div class="main-col">
 
-        <!-- Top bar -->
-        <div class="topbar">
+        <!-- Top bar (AI session mode) -->
+        <div class="topbar" id="topbar">
           <div class="breadcrumb">
             <span class="bc-home">strawberry</span>
             <span class="bc-sep">/</span>
             <span class="bc-title" id="sessionTitle">New session</span>
           </div>
           <div class="topbar-actions">
-            <button class="topbar-btn outline">⬆ Update Now</button>
+            <button class="topbar-btn outline" id="analyzeBtn">🔍 Analyze page</button>
             <button class="topbar-btn solid" id="openChatBtn">💬 Chat</button>
           </div>
         </div>
 
-        <!-- Feed -->
+        <!-- Feed (session tabs) -->
         <div class="feed" id="feed">
           <div class="feed-empty" id="feedEmpty">
             <div class="feed-empty-icon">🍓</div>
             <div class="feed-empty-title">What can I help you with?</div>
-            <div class="feed-empty-sub">Research topics, analyze pages, automate tasks — just ask.</div>
+            <div class="feed-empty-sub">Research topics · Analyze open browser tabs · Automate tasks</div>
           </div>
         </div>
 
-        <!-- Input -->
-        <div class="input-area">
+        <!-- Browser overlay bar (browser tabs) — sits above BrowserView -->
+        <div class="browser-ai-bar" id="browserAiBar" style="display:none">
+          <button class="bai-pill" id="baiAnalyze">🔍 Analyze this page</button>
+          <button class="bai-pill" id="baiLinks">🔗 Extract links</button>
+          <button class="bai-pill" id="baiSummarize">📄 Summarize</button>
+        </div>
+
+        <!-- Input area -->
+        <div class="input-area" id="inputArea">
           <div class="input-box">
             <button class="input-add" title="Attach">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -67,10 +95,10 @@
             <textarea id="mainInput" class="main-input" placeholder="Ask Strawberry anything…" rows="1"></textarea>
             <div class="input-right">
               <span class="smart-badge">★ Smart</span>
-              <button class="agent-pill" title="Agent mode">
+              <button class="agent-pill">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="5" r="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M2 12c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
               </button>
-              <button class="send-btn" id="sendBtn" title="Send">
+              <button class="send-btn" id="sendBtn">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 12V4M4 8l4-4 4 4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </button>
             </div>
@@ -86,15 +114,13 @@
         <div class="pp-avatar">GK</div>
         <div>
           <div class="pp-name">Gursharan Singh Kohli</div>
-          <div class="pp-credits-label">0 credits left</div>
+          <div class="pp-credits-label">Powered by Claude</div>
         </div>
       </div>
-      <div class="pp-bar-wrap"><div class="pp-bar"></div></div>
       <div class="pp-divider"></div>
-      <button class="pp-item">Upgrade plan</button>
-      <button class="pp-item">Invite friends for credits</button>
-      <button class="pp-item">Settings</button>
-      <button class="pp-item">Give feedback</button>
+      <button class="pp-item" id="ppHistory">📚 View history</button>
+      <button class="pp-item">⚙️ Settings</button>
+      <button class="pp-item">💬 Give feedback</button>
     </div>
 
   </div>
