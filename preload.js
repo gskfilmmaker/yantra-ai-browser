@@ -48,3 +48,28 @@ contextBridge.exposeInMainWorld('api', {
   // Remove all listeners for a channel (cleanup)
   off: (channel) => ipcRenderer.removeAllListeners(channel),
 })
+
+// ── window.strawberry — full orchestration API ────────────────────────────────
+contextBridge.exposeInMainWorld('strawberry', {
+  agents: {
+    list:      ()           => ipcRenderer.invoke('agent:list'),
+    getActive: ()           => ipcRenderer.invoke('agent:getActive'),
+    setActive: (id)         => ipcRenderer.invoke('agent:setActive', id),
+    create:    (cfg)        => ipcRenderer.invoke('agent:create', cfg),
+    update:    (id, partial)=> ipcRenderer.invoke('agent:update', id, partial),
+    remove:    (id)         => ipcRenderer.invoke('agent:delete', id),
+  },
+  routines: {
+    list:   ()        => ipcRenderer.invoke('routine:list'),
+    create: (cfg)     => ipcRenderer.invoke('routine:create', cfg),
+    update: (id, p)   => ipcRenderer.invoke('routine:update', id, p),
+    remove: (id)      => ipcRenderer.invoke('routine:delete', id),
+    run:    (id)      => ipcRenderer.invoke('routine:run', id),
+  },
+  memory: {
+    search: (q) => ipcRenderer.invoke('memory:search', q),
+  },
+  on: {
+    routineEvent: (cb) => ipcRenderer.on('routine-event', (_, d) => cb(d)),
+  },
+})

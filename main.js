@@ -1,8 +1,9 @@
 'use strict'
 const { app, BrowserWindow, Menu } = require('electron')
 const path = require('path')
-const tabManager = require('./main/tabManager')
+const tabManager    = require('./main/tabManager')
 const { register: registerIPC } = require('./main/ipcHandlers')
+const triggerEngine = require('./main/routines/triggerEngine')
 
 let mainWindow
 
@@ -32,6 +33,9 @@ app.whenReady().then(() => {
 
   // Create initial browser tab (shows new-tab page until user navigates)
   tabManager.createTab({ type: 'browser', url: '' })
+
+  // Wire routine trigger engine
+  triggerEngine.init(mainWindow)
 
   // ── Application menu with keyboard shortcuts ──────────────────────────────
   Menu.setApplicationMenu(Menu.buildFromTemplate([

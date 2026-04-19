@@ -95,6 +95,46 @@ button:focus-visible { outline: 2px solid #7C5CD4; outline-offset: 2px; }
 .nav-action-btn.solid { background: #5B3FA6; color: white; box-shadow: 0 2px 6px rgba(91,63,166,.25); }
 .nav-action-btn.solid:hover { opacity: .88; }
 
+/* ─── Context bar ────────────────────────────────────────────── */
+.context-bar {
+  display: flex; align-items: center; gap: 7px;
+  height: 26px; padding: 0 14px;
+  background: #FAFAFA; border-bottom: 1px solid #EFEFEF;
+  font-size: 12px; color: #666; flex-shrink: 0;
+}
+.context-bar[hidden] { display: none; }
+.ctx-favicon { font-size: 12px; }
+.ctx-page { font-weight: 500; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 340px; }
+.ctx-sep  { color: #ccc; }
+.ctx-agent { color: #7C5CD4; font-weight: 500; }
+
+/* ─── Agent picker ───────────────────────────────────────────── */
+.agent-sel {
+  display: flex; align-items: center; gap: 4px;
+  padding: 0 8px; height: 28px; border-radius: 7px;
+  border: 1px solid #E0E0E0; font-size: 13px; color: #444;
+  transition: background .12s;
+}
+.agent-sel:hover { background: #F5F5F5; }
+
+.agent-picker {
+  position: absolute; bottom: calc(100% + 6px); right: 0;
+  background: #fff; border: 1px solid #E0E0E0; border-radius: 10px;
+  padding: 6px; min-width: 200px; z-index: 300;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+}
+.agent-picker[hidden] { display: none; }
+.agent-option {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 7px; cursor: pointer;
+  transition: background .1s;
+}
+.agent-option:hover    { background: #F5F5F5; }
+.agent-option.active   { background: #F0EEFF; }
+.agent-option-avatar   { font-size: 18px; }
+.agent-option-name     { font-weight: 600; font-size: 13px; }
+.agent-option-desc     { font-size: 11px; color: #999; }
+
 /* ─── Canvas ─────────────────────────────────────────────────── */
 .canvas { display: flex; flex: 1; overflow: hidden; }
 

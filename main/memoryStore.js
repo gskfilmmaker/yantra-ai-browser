@@ -30,4 +30,16 @@ function getHistory(limit = 50) {
   return load().slice(0, limit)
 }
 
-module.exports = { save, getHistory }
+function search(query) {
+  if (!query) return 'No query provided.'
+  const q = query.toLowerCase()
+  const matches = load().filter(item =>
+    JSON.stringify(item).toLowerCase().includes(q)
+  ).slice(0, 8)
+  if (!matches.length) return `No memory found matching "${query}".`
+  return matches
+    .map(i => `**${i.title || i.type}** (${(i.timestamp || '').slice(0, 10)})\n${(i.result || '').slice(0, 300)}`)
+    .join('\n\n---\n\n')
+}
+
+module.exports = { save, getHistory, search }

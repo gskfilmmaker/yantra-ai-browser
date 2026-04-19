@@ -1,15 +1,37 @@
 'use strict'
-/* global api */
+/* global api, strawberry */
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
-let tabs = []           // [{id, url, title, loading, favicon}]
+let tabs        = []    // [{id, url, title, loading, favicon, canGoBack, canGoForward}]
 let activeTabId = null
-let isRunning = false
+let isRunning   = false
+let activeAgent = null  // current agent config
 
 // Per-tab conversation cards: tabId → {items:[]}
 // Conversation history lives in the main process (sessionHistory Map)
 const convos = {}
+
+// ─── Agent system bootstrap ───────────────────────────────────────────────────
+
+async function initAgents() {
+  try {
+    activeAgent = await strawberry.agents.getActive()
+    updateAgentUI()
+  } catch (e) { /* agents not yet available */ }
+}
+
+function updateAgentUI() {
+  if (!activeAgent) return
+  // Update agent selector button
+  const avatar = $('agentSelAvatar')
+  if (avatar) avatar.textContent = activeAgent.avatar || '🤖'
+  // Update context bar agent label
+  const ctxAgent = $('ctxAgent')
+  if (ctxAgent) ctxAgent.textContent = activeAgent.name
+}
+
+initAgents()
 
 // ─── IPC event wiring ─────────────────────────────────────────────────────────
 
@@ -19,6 +41,7 @@ api.on.tabSwitched(({ tabId, tabs: t }) => {
   renderTabs()
   syncURL()
   syncNavButtons(t.find(tab => tab.id === tabId))
+  syncContextBar(t.find(tab => tab.id === tabId))
   renderThread()
   scheduleBoundsUpdate()
 })
@@ -32,6 +55,7 @@ api.on.tabUpdated((tab) => {
     syncURL(tab)
     syncNavLoading(tab.loading)
     syncNavButtons(tab)
+    syncContextBar(tab)
     if (tab.url && tab.url !== 'about:blank') hideNewTabPage()
   }
 })
@@ -93,6 +117,23 @@ function syncNavButtons(tab) {
   $('navForward').disabled = !tab?.canGoForward
 }
 
+function syncContextBar(tab) {
+  const bar = $('contextBar')
+  if (!bar) return
+  if (!tab?.url || tab.url === 'about:blank' || tab.url === '') {
+    bar.hidden = true
+    return
+  }
+  bar.hidden = false
+  const favicon = $('ctxFavicon')
+  const page    = $('ctxPage')
+  if (favicon) favicon.textContent = tab.favicon ? '' : '🌐'
+  if (favicon && tab.favicon) {
+    favicon.innerHTML = `<img src="${tab.favicon}" width="14" height="14" style="vertical-align:middle" onerror="this.outerHTML='🌐'">`
+  }
+  if (page) page.textContent = tab.title || tab.url
+}
+
 function syncNavLoading(loading) {
   const btn = $('navReload')
   btn.innerHTML = loading
@@ -128,6 +169,58 @@ $('ntGo').addEventListener('click', () => navigate($('ntSearch').value))
 
 function hideNewTabPage() { $('newTabPage').classList.add('hidden') }
 function showNewTabPage() { $('newTabPage').classList.remove('hidden'); $('ntSearch').focus() }
+
+// ─── Agent picker ─────────────────────────────────────────────────────────────
+
+const agentSel    = $('agentSel')
+const agentPicker = $('agentPicker')
+
+agentSel?.addEventListener('click', async (e) => {
+  e.stopPropagation()
+  if (!agentPicker.hidden) { agentPicker.hidden = true; return }
+
+  const agents = await strawberry.agents.list()
+  agentPicker.innerHTML = agents.map(a => `
+    <div class="agent-option${a.id === activeAgent?.id ? ' active' : ''}" data-id="${esc(a.id)}">
+      <span class="agent-option-avatar">${esc(a.avatar || '🤖')}</span>
+      <div>
+        <div class="agent-option-name">${esc(a.name)}</div>
+        <div class="agent-option-desc">${esc(a.description || '')}</div>
+      </div>
+    </div>
+  `).join('')
+
+  agentPicker.querySelectorAll('.agent-option').forEach(el => {
+    el.addEventListener('click', async () => {
+      await strawberry.agents.setActive(el.dataset.id)
+      activeAgent = await strawberry.agents.getActive()
+      updateAgentUI()
+      agentPicker.hidden = true
+      addCard({ id: `agent-${Date.now()}`, type: 'text', text: `Switched to **${activeAgent.name}** ${activeAgent.avatar || ''}` })
+    })
+  })
+
+  agentPicker.hidden = false
+})
+
+document.addEventListener('click', () => { if (agentPicker) agentPicker.hidden = true })
+
+// ─── Routine events ───────────────────────────────────────────────────────────
+
+strawberry.on.routineEvent(ev => {
+  if (ev.type === 'start') {
+    addCard({ id: `rt-${ev.routineId}-start`, type: 'tool_call', toolName: 'runRoutine',
+      toolInput: { name: ev.routineName }, status: 'running' })
+  } else if (ev.type === 'done') {
+    const item = convo().items.find(i => i.id === `rt-${ev.routineId}-start`)
+    if (item) { item.status = 'done'; item.summary = ev.result?.slice(0, 80); patchCard(item.id) }
+    addCard({ id: `rt-${ev.routineId}-result`, type: 'text', text: `**Routine: ${ev.routineName}**\n\n${ev.result}` })
+  } else if (ev.type === 'error') {
+    addCard({ id: `rt-${ev.routineId}-err`, type: 'error', text: `Routine "${ev.routineName}": ${ev.error}` })
+  }
+})
+
+// ─── URL bar focus ────────────────────────────────────────────────────────────
 
 // Cmd+L from main menu focuses URL bar even when BrowserView has focus
 api.on.focusUrlBar(() => {
