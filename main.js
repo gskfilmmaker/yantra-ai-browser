@@ -1,5 +1,19 @@
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
+const TurndownService = require('turndown')
+const { parseDocument, DomUtils } = require('htmlparser2')
+
+// Shared turndown instance — same pipeline as real Strawberry
+const turndown = new TurndownService({
+  headingStyle: 'atx',
+  bulletListMarker: '-',
+  codeBlockStyle: 'fenced',
+})
+// Strip noise rules
+turndown.addRule('remove-noise', {
+  filter: ['script', 'style', 'nav', 'footer', 'header', 'aside', 'noscript', 'iframe'],
+  replacement: () => '',
+})
 
 let mainWindow
 
@@ -47,30 +61,44 @@ async function httpFetch(url, options = {}) {
 
 async function webSearch(query) {
   try {
+    // Use DuckDuckGo HTML search for real results, parsed with htmlparser2
     const res = await httpFetch(
+      `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`,
+      { headers: { 'Accept': 'text/html' } }
+    )
+    const html = await res.text()
+    const dom = parseDocument(html)
+
+    const results = []
+
+    // Extract result links and snippets from DDG HTML
+    const allLinks = DomUtils.findAll(
+      el => el.type === 'tag' && el.name === 'a' && el.attribs && el.attribs.class && el.attribs.class.includes('result__a'),
+      dom.children
+    )
+    const allSnippets = DomUtils.findAll(
+      el => el.type === 'tag' && el.attribs && el.attribs.class && el.attribs.class.includes('result__snippet'),
+      dom.children
+    )
+
+    allLinks.slice(0, 6).forEach((link, i) => {
+      const title = DomUtils.getText(link).trim()
+      const href = link.attribs.href || ''
+      const snippet = allSnippets[i] ? DomUtils.getText(allSnippets[i]).trim() : ''
+      if (title) results.push(`**${title}**\n${snippet}\n${href}`)
+    })
+
+    if (results.length > 0) return results.join('\n\n')
+
+    // Fallback to instant answer API
+    const apiRes = await httpFetch(
       `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`
     )
-    const data = await res.json()
+    const data = await apiRes.json()
     const parts = []
-
-    if (data.AbstractText) {
-      parts.push(data.AbstractText)
-      if (data.AbstractURL) parts.push(`Source: ${data.AbstractURL}`)
-    }
-
-    if (data.Results && data.Results.length > 0) {
-      parts.push('\nTop results:')
-      data.Results.slice(0, 5).forEach(r => parts.push(`• ${r.Text} — ${r.FirstURL}`))
-    }
-
-    if (data.RelatedTopics && data.RelatedTopics.length > 0) {
-      parts.push('\nRelated:')
-      data.RelatedTopics.slice(0, 6).forEach(t => {
-        if (t.Text) parts.push(`• ${t.Text}${t.FirstURL ? ` — ${t.FirstURL}` : ''}`)
-      })
-    }
-
-    return parts.join('\n') || 'No instant results. Try fetching a specific URL for more details.'
+    if (data.AbstractText) parts.push(data.AbstractText + (data.AbstractURL ? `\nSource: ${data.AbstractURL}` : ''))
+    data.RelatedTopics?.slice(0, 5).forEach(t => { if (t.Text) parts.push(`• ${t.Text}`) })
+    return parts.join('\n') || 'No results found. Try fetching a specific URL.'
   } catch (e) {
     return `Search failed: ${e.message}`
   }
@@ -80,20 +108,23 @@ async function fetchWebpage(url) {
   try {
     const res = await httpFetch(url)
     const html = await res.text()
-    const text = html
-      .replace(/<script[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[\s\S]*?<\/style>/gi, '')
-      .replace(/<nav[\s\S]*?<\/nav>/gi, '')
-      .replace(/<footer[\s\S]*?<\/footer>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-      .replace(/&#\d+;/g, '')
-      .replace(/\s{2,}/g, ' ')
-      .trim()
-    return text.slice(0, 10000)
+    // turndown converts HTML → clean Markdown (same pipeline as real Strawberry)
+    const markdown = turndown.turndown(html)
+    // Collapse excessive blank lines
+    const cleaned = markdown.replace(/\n{3,}/g, '\n\n').trim()
+    return cleaned.slice(0, 12000)
   } catch (e) {
     return `Could not fetch page: ${e.message}`
   }
+}
+
+async function saveNote(filename, content) {
+  const fs = require('fs').promises
+  const os = require('os')
+  const safe = filename.replace(/[^a-zA-Z0-9._-]/g, '_')
+  const dest = path.join(os.homedir(), 'Desktop', safe)
+  await fs.writeFile(dest, content, 'utf8')
+  return `Saved to Desktop/${safe}`
 }
 
 // ─── Agent IPC ────────────────────────────────────────────────────────────────
@@ -101,7 +132,7 @@ async function fetchWebpage(url) {
 const TOOLS = [
   {
     name: 'web_search',
-    description: 'Search the web for current information, news, prices, facts, or any topic.',
+    description: 'Search the web for current information, news, pricing, facts, people, or any topic. Always search before answering questions about current events or specific data.',
     input_schema: {
       type: 'object',
       properties: {
@@ -112,7 +143,7 @@ const TOOLS = [
   },
   {
     name: 'fetch_webpage',
-    description: 'Fetch and read the full text content of any webpage URL.',
+    description: 'Fetch and read the full content of any webpage URL. Returns clean Markdown. Use this to read articles, documentation, product pages, or search result URLs.',
     input_schema: {
       type: 'object',
       properties: {
@@ -120,18 +151,32 @@ const TOOLS = [
       },
       required: ['url']
     }
+  },
+  {
+    name: 'save_note',
+    description: 'Save a structured note, summary, report, or extracted data to a local file. Use this to persist research results the user can access later.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        filename: { type: 'string', description: 'Filename (e.g. "research-report.md")' },
+        content: { type: 'string', description: 'The content to save (Markdown format)' }
+      },
+      required: ['filename', 'content']
+    }
   }
 ]
 
-const SYSTEM = `You are Strawberry, an intelligent AI research assistant. You help users research topics, find information, analyze data, and complete complex tasks autonomously.
+const SYSTEM = `You are Strawberry, an intelligent AI research and automation assistant built into a browser. You autonomously research topics, analyze content, and complete complex multi-step tasks.
 
-When given a task:
-- Use your tools proactively to gather real, current information
-- Show your reasoning and steps clearly
-- Cite sources with URLs when available
-- Be thorough, accurate, and helpful
+Core behaviors:
+- Always use web_search before answering questions that need current data, prices, or facts
+- Follow up searches by fetching specific URLs with fetch_webpage to get full details
+- Chain multiple tool calls to complete complex research tasks
+- Save important findings with save_note when the user asks for a report or wants to keep data
+- Be specific, cite sources (URLs), and show your work step by step
+- When you find key information, highlight it clearly
 
-You have access to web search and webpage fetching. Use them whenever you need current or specific information.`
+You are working autonomously — complete the entire task, not just the first step.`
 
 ipcMain.handle('run-agent', async (event, { message, sessionId, history }) => {
   let Anthropic
@@ -185,9 +230,15 @@ ipcMain.handle('run-agent', async (event, { message, sessionId, history }) => {
 
           let result = ''
           try {
-            if (tb.name === 'web_search') result = await webSearch(tb.input.query)
-            else if (tb.name === 'fetch_webpage') result = await fetchWebpage(tb.input.url)
-            else result = 'Unknown tool'
+            if (tb.name === 'web_search') {
+              result = await webSearch(tb.input.query)
+            } else if (tb.name === 'fetch_webpage') {
+              result = await fetchWebpage(tb.input.url)
+            } else if (tb.name === 'save_note') {
+              result = await saveNote(tb.input.filename, tb.input.content)
+            } else {
+              result = 'Unknown tool'
+            }
           } catch (e) {
             result = `Error: ${e.message}`
           }

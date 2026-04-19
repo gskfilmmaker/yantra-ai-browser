@@ -99,10 +99,13 @@ function buildItemHTML(item) {
       return `<div class="msg-ai"><div class="msg-ai-content">${renderMarkdown(item.text)}</div></div>`
 
     case 'tool_call': {
-      const icon = item.toolName === 'web_search' ? '🔍' : '📄'
+      const iconMap = { web_search: '🔍', fetch_webpage: '📄', save_note: '💾' }
+      const icon = iconMap[item.toolName] || '⚙️'
       const label = item.toolName === 'web_search'
         ? `Searching for "${item.toolInput.query}"`
-        : `Fetching ${item.toolInput.url}`
+        : item.toolName === 'save_note'
+        ? `Saving "${item.toolInput.filename}"`
+        : `Reading ${item.toolInput.url}`
       const status = item.status || 'running'
       const badgeLabel = status === 'running' ? 'Working…' : status === 'done' ? '✓ Done' : '✗ Error'
       return `
