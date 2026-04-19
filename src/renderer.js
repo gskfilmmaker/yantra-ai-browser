@@ -3,368 +3,378 @@
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
-const sessions = {}      // sessionId → { title, items[], history[] }
+let tabs = []           // [{id, url, title, loading, favicon}]
 let activeTabId = null
-let allTabs = []         // [{id, type, url, title, loading}]
 let isRunning = false
 
-// ─── Bootstrap ───────────────────────────────────────────────────────────────
+// Per-tab conversation: tabId → {items:[], history:[]}
+const convos = {}
 
-api.on.tabSwitched(({ tabId, tabs }) => {
-  allTabs = tabs
-  activeTabId = tabId
-  ensureSession(tabId, tabs)
-  syncCanvas()
+// ─── IPC event wiring ─────────────────────────────────────────────────────────
+
+api.on.tabSwitched(({ tabId, tabs: t }) => {
+  tabs = t; activeTabId = tabId
+  if (!convos[tabId]) convos[tabId] = { items: [], history: [] }
   renderTabs()
+  syncURL()
+  renderThread()
+  scheduleBoundsUpdate()
 })
 
 api.on.tabUpdated((tab) => {
-  const existing = allTabs.find(t => t.id === tab.id)
+  const existing = tabs.find(t => t.id === tab.id)
   if (existing) Object.assign(existing, tab)
-  else allTabs.push(tab)
-  if (tab.id === activeTabId) syncNavBar(tab)
+  else tabs.push(tab)
   renderTabs()
+  if (tab.id === activeTabId) {
+    syncURL(tab)
+    syncNavLoading(tab.loading)
+    // Hide new-tab page once a URL is navigating
+    if (tab.url && tab.url !== 'about:blank') hideNewTabPage()
+  }
 })
 
-api.on.tabClosed(({ tabId, tabs }) => {
-  allTabs = tabs
-  renderTabs()
-})
+api.on.tabClosed(({ tabs: t }) => { tabs = t; renderTabs() })
 
 api.on.agentEvent(handleAgentEvent)
 
-// ─── Session management ───────────────────────────────────────────────────────
-
-function ensureSession(tabId, tabs) {
-  if (!sessions[tabId]) {
-    const tab = tabs.find(t => t.id === tabId)
-    sessions[tabId] = { title: tab?.title || 'New session', items: [], history: [] }
-  }
-}
-
-function activeSession() { return sessions[activeTabId] }
-
-// ─── Canvas sync — the single-canvas switch ───────────────────────────────────
-
-function syncCanvas() {
-  const tab = allTabs.find(t => t.id === activeTabId)
-  const isBrowser = tab?.type === 'browser'
-
-  // Nav bar
-  $('navBar').style.display = isBrowser ? 'flex' : 'none'
-  // Top bar (session breadcrumb)
-  $('topbar').style.display = isBrowser ? 'none' : 'flex'
-  // Feed (chat)
-  $('feed').style.display = isBrowser ? 'none' : 'flex'
-  // Browser quick-action bar
-  $('browserAiBar').style.display = isBrowser ? 'flex' : 'none'
-
-  if (!isBrowser) {
-    renderFeed()
-    updateBreadcrumb()
-  } else {
-    if (tab?.url) $('urlInput').value = tab.url
-    syncNavBar(tab)
-  }
-}
-
-function syncNavBar(tab) {
-  if (!tab) return
-  if (tab.url) $('urlInput').value = tab.url
-  $('navReload').innerHTML = tab.loading
-    ? `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`
-    : `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M12 2.5A5.5 5.5 0 1 0 13 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="9,1 12,2.5 10.5,5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`
-}
-
-function updateBreadcrumb() {
-  const s = activeSession()
-  $('sessionTitle').textContent = s?.title || 'New session'
-}
-
-// ─── Tab bar rendering ────────────────────────────────────────────────────────
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
 
 function renderTabs() {
   const list = $('tabsList')
   list.innerHTML = ''
-  allTabs.forEach(tab => {
+  tabs.forEach(tab => {
     const el = document.createElement('div')
     el.className = `tab${tab.id === activeTabId ? ' active' : ''}`
 
-    const icon = tab.type === 'browser' ? '🌐' : '🍓'
-    const label = tab.loading ? 'Loading…' : (tab.title || 'New Tab')
+    // Favicon
+    const faviconHTML = tab.favicon
+      ? `<img class="tab-favicon" src="${tab.favicon}" onerror="this.style.display='none'">`
+      : `<span class="tab-favicon-emoji">🌐</span>`
 
     el.innerHTML = `
-      <span class="tab-icon">${icon}</span>
-      <span class="tab-label">${esc(label)}</span>
-      <button class="tab-close" title="Close">×</button>
+      ${faviconHTML}
+      <span class="tab-title">${esc(tab.loading ? 'Loading…' : tab.title || 'New Tab')}</span>
+      <button class="tab-close" title="Close tab">×</button>
     `
-    el.addEventListener('click', (e) => {
+    el.addEventListener('click', e => {
       if (!e.target.classList.contains('tab-close')) api.tab.switch(tab.id)
     })
-    el.querySelector('.tab-close').addEventListener('click', (e) => {
+    el.querySelector('.tab-close').addEventListener('click', e => {
       e.stopPropagation(); api.tab.close(tab.id)
     })
     list.appendChild(el)
   })
 }
 
-// ─── Feed rendering ───────────────────────────────────────────────────────────
+$('tabAdd').addEventListener('click', () => api.tab.create({ type: 'browser', url: '' }))
+$('sbNew').addEventListener('click',  () => api.tab.create({ type: 'browser', url: '' }))
 
-function renderFeed() {
-  const feed = $('feed')
-  const session = activeSession()
-  if (!session || session.items.length === 0) {
-    feed.innerHTML = `
-      <div class="feed-empty" id="feedEmpty">
-        <div class="feed-empty-icon">🍓</div>
-        <div class="feed-empty-title">What can I help you with?</div>
-        <div class="feed-empty-sub">Research topics · Analyze open browser tabs · Automate tasks</div>
-      </div>`
-    return
+// ─── Navigation ───────────────────────────────────────────────────────────────
+
+function syncURL(tab) {
+  const t = tab || tabs.find(t => t.id === activeTabId)
+  if (!t) return
+  // URL bar shows "strawberry / title" when a page is loaded, raw URL otherwise
+  const input = $('urlInput')
+  if (t.title && t.url && !t.url.startsWith('about:')) {
+    input.value = `strawberry / ${t.title}`
+    input.dataset.realUrl = t.url
+  } else {
+    input.value = ''
+    input.dataset.realUrl = ''
   }
-  feed.innerHTML = ''
-  session.items.forEach(item => feed.appendChild(buildItem(item)))
-  scrollFeed()
 }
 
-function buildItem(item) {
-  const wrap = document.createElement('div')
-  wrap.className = 'feed-item'
-  wrap.id = `item-${item.id}`
-  wrap.innerHTML = itemHTML(item)
-  return wrap
+function syncNavLoading(loading) {
+  const btn = $('navReload')
+  btn.innerHTML = loading
+    ? `<svg width="13" height="13" viewBox="0 0 13 13"><path d="M1 1l11 11M12 1L1 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`
+    : `<svg width="15" height="15" viewBox="0 0 15 15"><path d="M13 3A6 6 0 1 0 14 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><polyline points="10,1 13,3 11,6" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" fill="none"/></svg>`
 }
 
-function itemHTML(item) {
+function navigate(raw) {
+  let url = raw.trim()
+  if (!url) return
+  hideNewTabPage()
+  api.browser.navigate(url)
+}
+
+$('navBack').addEventListener('click', () => api.browser.goBack())
+$('navForward').addEventListener('click', () => api.browser.goForward())
+$('navReload').addEventListener('click', () => api.browser.reload())
+
+$('urlInput').addEventListener('focus', e => {
+  // Show real URL when focused
+  if (e.target.dataset.realUrl) e.target.value = e.target.dataset.realUrl
+  e.target.select()
+})
+$('urlInput').addEventListener('blur', e => syncURL())
+$('urlInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { navigate(e.target.value); e.target.blur() }
+  if (e.key === 'Escape') { e.target.blur() }
+})
+
+// New tab page search
+$('ntSearch').addEventListener('keydown', e => { if (e.key === 'Enter') navigate($('ntSearch').value) })
+$('ntGo').addEventListener('click', () => navigate($('ntSearch').value))
+
+function hideNewTabPage() { $('newTabPage').classList.add('hidden') }
+function showNewTabPage() { $('newTabPage').classList.remove('hidden'); $('ntSearch').focus() }
+
+// Top right buttons
+$('btnChat').addEventListener('click', () => {
+  const overlay = $('aiOverlay')
+  overlay.style.display = overlay.style.display === 'none' ? 'flex' : 'flex'
+  scheduleBoundsUpdate()
+})
+$('btnUpdateNow').addEventListener('click', () => sendMessage('What\'s new? Give me a quick update on what you can help me with.'))
+
+// History sidebar button
+$('sbHistory').addEventListener('click', async () => {
+  const hist = await api.memory.getHistory(10)
+  const text = hist.length
+    ? hist.map(h => `**${h.title||h.type}** — ${h.timestamp?.slice(0,10)}\n${(h.result||'').slice(0,200)}`).join('\n\n---\n\n')
+    : 'No history yet.'
+  addCard({ id: `hist-${Date.now()}`, type: 'text', text: '## Recent Research\n\n' + text })
+})
+
+// ─── BrowserView bounds ───────────────────────────────────────────────────────
+// Tells the main process exactly where to place the BrowserView
+// so it fills the space above the AI overlay.
+
+let boundsTimer = null
+function scheduleBoundsUpdate() {
+  clearTimeout(boundsTimer)
+  boundsTimer = setTimeout(updateBrowserViewBounds, 30)
+}
+
+function updateBrowserViewBounds() {
+  const sidebar   = $('sidebar')
+  const navRow    = $('navRow')
+  const overlay   = $('aiOverlay')
+  const tabStrip  = $('tabStrip')
+
+  const sidebarW = sidebar.offsetWidth
+  const topY     = tabStrip.offsetHeight + navRow.offsetHeight
+  const winH     = window.innerHeight
+  const overlayH = overlay.offsetHeight
+
+  api.browser.setBounds({
+    x: Math.round(sidebarW),
+    y: Math.round(topY),
+    width:  Math.round(window.innerWidth - sidebarW),
+    height: Math.round(winH - topY - overlayH),
+  })
+}
+
+window.addEventListener('resize', scheduleBoundsUpdate)
+
+// ─── AI overlay resize (drag handle) ─────────────────────────────────────────
+
+let dragStart = null
+const dragHandle = $('aiDragHandle')
+const aiOverlay  = $('aiOverlay')
+
+dragHandle.addEventListener('mousedown', e => {
+  dragStart = { y: e.clientY, h: aiOverlay.offsetHeight }
+  document.addEventListener('mousemove', onDragMove)
+  document.addEventListener('mouseup', onDragUp)
+})
+
+function onDragMove(e) {
+  if (!dragStart) return
+  const delta = dragStart.y - e.clientY
+  const newH = Math.max(68, Math.min(500, dragStart.h + delta))
+  aiOverlay.style.minHeight = newH + 'px'
+  scheduleBoundsUpdate()
+}
+function onDragUp() {
+  dragStart = null
+  document.removeEventListener('mousemove', onDragMove)
+  document.removeEventListener('mouseup', onDragUp)
+}
+
+// ─── AI Thread ────────────────────────────────────────────────────────────────
+
+function convo() { return convos[activeTabId] || { items: [], history: [] } }
+
+function renderThread() {
+  const thread = $('aiThread')
+  thread.innerHTML = ''
+  convo().items.forEach(item => thread.appendChild(buildCard(item)))
+  scrollThread()
+}
+
+function buildCard(item) {
+  const el = document.createElement('div')
+  el.id = `card-${item.id}`
+  el.innerHTML = cardHTML(item)
+  return el
+}
+
+function cardHTML(item) {
   switch (item.type) {
     case 'user':
-      return `<div class="msg-user"><div class="msg-user-bubble">${esc(item.text)}</div></div>`
+      return `<div class="card card-user"><div class="card-user-bubble">${esc(item.text)}</div></div>`
 
     case 'text':
-      return `<div class="msg-ai"><div class="msg-ai-content">${md(item.text)}</div></div>`
+      return `<div class="card"><div class="card-text">${renderMd(item.text)}</div></div>`
 
     case 'tool_call': {
       const icons = { web_search:'🔍', fetch_webpage:'📄', get_current_page:'🖥️', open_url:'🔗', get_all_tabs:'📑', save_note:'💾' }
       const icon = icons[item.toolName] || '⚙️'
-      const label = item.toolName === 'web_search'
-        ? `Searching: "${item.toolInput.query}"`
-        : item.toolName === 'get_current_page' ? 'Reading current page…'
-        : item.toolName === 'get_all_tabs'     ? 'Reading all open tabs…'
-        : item.toolName === 'save_note'        ? `Saving "${item.toolInput.filename}"`
-        : item.toolName === 'open_url'         ? `Opening ${item.toolInput.url}`
-        : `Fetching ${item.toolInput.url || ''}`
+      const title = item.toolName === 'web_search'       ? `Searching: "${item.toolInput?.query}"`
+                  : item.toolName === 'get_current_page' ? 'Reading current page…'
+                  : item.toolName === 'get_all_tabs'     ? 'Reading all open tabs…'
+                  : item.toolName === 'save_note'        ? `Saving "${item.toolInput?.filename}"`
+                  : item.toolName === 'open_url'         ? `Opening ${item.toolInput?.url}`
+                  : `Fetching ${item.toolInput?.url || ''}`
       const st = item.status || 'running'
-      const badge = st === 'running' ? '<div class="spinner"></div> Working…' : st === 'done' ? '✓ Done' : '✗ Error'
-      return `
-        <div class="tool-card ${st}">
-          <span class="tool-icon">${icon}</span>
-          <div class="tool-body">
-            <div class="tool-title">${esc(label)}</div>
-            ${item.summary ? `<div class="tool-subtitle">${esc(item.summary)}</div>` : ''}
-          </div>
-          <div class="tool-badge ${st}">${badge}</div>
-        </div>`
+      const badge = st === 'running' ? '<span class="spinner"></span> Working…' : st === 'done' ? '✓ Done' : '✗ Error'
+      return `<div class="card-tool ${st}">
+        <span class="ct-icon">${icon}</span>
+        <div class="ct-body">
+          <div class="ct-title">${esc(title)}</div>
+          ${item.summary ? `<div class="ct-sub">${esc(item.summary)}</div>` : ''}
+        </div>
+        <div class="ct-badge ${st}">${badge}</div>
+      </div>`
     }
 
     case 'feedback':
-      return `<div class="feedback-row">
-        <button class="feedback-btn" title="Good">👍</button>
-        <button class="feedback-btn" title="Bad">👎</button>
+      return `<div class="card card-feedback">
+        <button class="fb-btn" title="Good">👍</button>
+        <button class="fb-btn" title="Bad">👎</button>
       </div>`
 
     case 'error':
-      return `<div class="feed-item"><div class="error-card"><span>⚠️</span>${esc(item.text)}</div></div>`
+      return `<div class="card card-tool error">
+        <span class="ct-icon">⚠️</span>
+        <div class="ct-body"><div class="ct-title">${esc(item.text)}</div></div>
+        <div class="ct-badge error">Error</div>
+      </div>`
 
     default: return ''
   }
 }
 
-function patchItem(itemId) {
-  const session = activeSession()
-  const item = session?.items.find(i => i.id === itemId)
-  const el = document.getElementById(`item-${itemId}`)
-  if (item && el) el.innerHTML = itemHTML(item)
+function patchCard(itemId) {
+  const item = convo().items.find(i => i.id === itemId)
+  const el   = document.getElementById(`card-${itemId}`)
+  if (item && el) el.innerHTML = cardHTML(item)
 }
 
-function appendItem(item) {
-  const session = activeSession()
-  if (!session) return
-  $('feedEmpty')?.remove()
-  session.items.push(item)
-  const feed = $('feed')
-  feed.appendChild(buildItem(item))
-  scrollFeed()
+function addCard(item) {
+  const c = convo()
+  c.items.push(item)
+  const thread = $('aiThread')
+  thread.appendChild(buildCard(item))
+  // Show overlay if hidden
+  aiOverlay.style.display = 'flex'
+  scheduleBoundsUpdate()
+  scrollThread()
 }
 
-function scrollFeed() {
-  const feed = $('feed')
-  if (feed) feed.scrollTop = feed.scrollHeight
+function scrollThread() {
+  const thread = $('aiThread')
+  if (thread) thread.scrollTop = thread.scrollHeight
 }
 
 // ─── Agent events ─────────────────────────────────────────────────────────────
 
-const toolCardMap = {}   // toolId → itemId
-let currentTextId = null
+const toolMap = {}
+let curTextId = null
 
-function handleAgentEvent(event) {
-  if (event.sessionId !== activeTabId) return
+function handleAgentEvent(ev) {
+  if (ev.sessionId !== activeTabId) return
 
-  switch (event.type) {
+  switch (ev.type) {
     case 'tool_call': {
-      const item = {
-        id: `tc-${event.toolId}`, type: 'tool_call',
-        toolName: event.toolName, toolInput: event.toolInput, status: 'running',
-      }
-      toolCardMap[event.toolId] = item.id
-      currentTextId = null
-      appendItem(item)
+      const item = { id: `tc-${ev.toolId}`, type: 'tool_call', toolName: ev.toolName, toolInput: ev.toolInput, status: 'running' }
+      toolMap[ev.toolId] = item.id
+      curTextId = null
+      addCard(item)
       break
     }
     case 'tool_result': {
-      const itemId = toolCardMap[event.toolId]
-      const session = activeSession()
-      const item = session?.items.find(i => i.id === itemId)
+      const id = toolMap[ev.toolId]
+      const item = convo().items.find(i => i.id === id)
       if (item) {
         item.status = 'done'
-        const firstLine = event.result.split('\n').find(l => l.trim()) || ''
-        item.summary = firstLine.slice(0, 90) + (firstLine.length > 90 ? '…' : '')
-        patchItem(itemId)
-        scrollFeed()
+        const line = ev.result.split('\n').find(l => l.trim()) || ''
+        item.summary = line.slice(0, 100) + (line.length > 100 ? '…' : '')
+        patchCard(id); scrollThread()
       }
       break
     }
     case 'text': {
-      if (currentTextId) {
-        const session = activeSession()
-        const item = session?.items.find(i => i.id === currentTextId)
-        if (item) { item.text = event.text; patchItem(currentTextId); scrollFeed(); break }
+      if (curTextId) {
+        const item = convo().items.find(i => i.id === curTextId)
+        if (item) { item.text = ev.text; patchCard(curTextId); scrollThread(); break }
       }
-      const item = { id: `txt-${Date.now()}`, type: 'text', text: event.text }
-      currentTextId = item.id
-      appendItem(item)
+      const item = { id: `txt-${Date.now()}`, type: 'text', text: ev.text }
+      curTextId = item.id
+      addCard(item)
       break
     }
     case 'error':
-      appendItem({ id: `err-${Date.now()}`, type: 'error', text: event.text })
-      finishRun()
-      break
+      addCard({ id: `err-${Date.now()}`, type: 'error', text: ev.text })
+      finishRun(); break
     case 'done':
-      currentTextId = null
-      appendItem({ id: `fb-${Date.now()}`, type: 'feedback' })
-      finishRun()
-      break
+      curTextId = null
+      addCard({ id: `fb-${Date.now()}`, type: 'feedback' })
+      finishRun(); break
   }
 }
 
 function finishRun() {
   isRunning = false
-  $('sendBtn').disabled = false
-  $('mainInput').disabled = false
+  $('aiSend').disabled = false
+  $('aiInput').disabled = false
 }
 
 // ─── Send message ─────────────────────────────────────────────────────────────
 
 async function sendMessage(prefill) {
   if (isRunning) return
-  const input = $('mainInput')
-  const text = (prefill || input.value).trim()
+  const inputEl = $('aiInput')
+  const text = (prefill || inputEl.value).trim()
   if (!text) return
-  if (!prefill) input.value = ''
-  resizeInput()
+  if (!prefill) { inputEl.value = ''; resizeAiInput() }
 
-  // If a browser tab is active, switch to or create a companion session tab
-  const currentTab = allTabs.find(t => t.id === activeTabId)
-  if (currentTab?.type === 'browser') {
-    // Find or create a session tab to hold the conversation
-    let sessionTab = allTabs.find(t => t.type === 'session')
-    if (!sessionTab) {
-      await api.tab.create({ type: 'session' })
-      return // Will re-trigger after switch
-    }
-    await api.tab.switch(sessionTab.id)
-    // Give renderer a tick to update, then send
-    setTimeout(() => sendMessage(text), 50)
-    return
-  }
-
-  const session = activeSession()
-  if (!session) return
+  const c = convos[activeTabId]
+  if (!c) return
 
   isRunning = true
-  $('sendBtn').disabled = true
+  $('aiSend').disabled = true
 
-  if (session.items.length === 0) {
-    session.title = text.slice(0, 48) + (text.length > 48 ? '…' : '')
-    renderTabs()
-    updateBreadcrumb()
-  }
+  // Update session tab label
+  $('sessionTab').textContent = text.slice(0, 30) + (text.length > 30 ? '…' : '')
 
-  appendItem({ id: `u-${Date.now()}`, type: 'user', text })
-
-  const history = session.history.slice()
-  session.history.push({ role: 'user', content: text })
+  addCard({ id: `u-${Date.now()}`, type: 'user', text })
+  const history = c.history.slice()
+  c.history.push({ role: 'user', content: text })
 
   api.agent.run({ message: text, sessionId: activeTabId, history })
 }
 
-// ─── Quick-action bar (browser tabs) ─────────────────────────────────────────
-
-$('baiAnalyze').addEventListener('click',   () => sendMessage('Analyze what is currently on this page and give me a detailed summary.'))
-$('baiLinks').addEventListener('click',     () => sendMessage('Extract and list all the important links on the current page.'))
-$('baiSummarize').addEventListener('click', () => sendMessage('Summarize this page in bullet points.'))
-$('analyzeBtn').addEventListener('click',   () => sendMessage('Analyze this page and give me key insights.'))
-
-// ─── Input controls ───────────────────────────────────────────────────────────
-
-function resizeInput() {
-  const el = $('mainInput')
-  el.style.height = 'auto'
-  el.style.height = Math.min(el.scrollHeight, 180) + 'px'
-}
-
-$('mainInput').addEventListener('input', resizeInput)
-$('mainInput').addEventListener('keydown', e => {
+$('aiSend').addEventListener('click', () => sendMessage())
+$('aiInput').addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
 })
-$('sendBtn').addEventListener('click', () => sendMessage())
 
-// ─── Browser nav bar ──────────────────────────────────────────────────────────
-
-$('navBack').addEventListener('click',    () => api.browser.goBack())
-$('navForward').addEventListener('click', () => api.browser.goForward())
-$('navReload').addEventListener('click',  () => api.browser.reload())
-
-$('urlInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') api.browser.navigate(e.target.value.trim())
-})
-$('urlInput').addEventListener('focus', e => e.target.select())
-
-// ─── New tab buttons ──────────────────────────────────────────────────────────
-
-$('tabNewSession').addEventListener('click',  () => api.tab.create({ type: 'session' }))
-$('tabNewBrowser').addEventListener('click',  () => api.tab.create({ type: 'browser', url: 'https://www.google.com' }))
-$('sbNewSession').addEventListener('click',   () => api.tab.create({ type: 'session' }))
-$('sbNewBrowser').addEventListener('click',   () => api.tab.create({ type: 'browser', url: 'https://www.google.com' }))
-
-// ─── Profile popup ────────────────────────────────────────────────────────────
-
-$('avatarBtn').addEventListener('click', e => { e.stopPropagation(); $('profilePopup').classList.toggle('open') })
-document.addEventListener('click', () => $('profilePopup').classList.remove('open'))
-$('profilePopup').addEventListener('click', e => e.stopPropagation())
-
-$('ppHistory').addEventListener('click', async () => {
-  $('profilePopup').classList.remove('open')
-  const history = await api.memory.getHistory(20)
-  const text = history.length
-    ? history.map(h => `**${h.title || h.type}** (${h.timestamp?.slice(0,10)})\n${(h.result||'').slice(0,200)}`).join('\n\n---\n\n')
-    : 'No history yet.'
-  const session = activeSession()
-  if (session) appendItem({ id: `hist-${Date.now()}`, type: 'text', text: '## Research History\n\n' + text })
-})
+function resizeAiInput() {
+  const el = $('aiInput')
+  el.style.height = 'auto'
+  el.style.height = Math.min(el.scrollHeight, 160) + 'px'
+  scheduleBoundsUpdate()
+}
+$('aiInput').addEventListener('input', resizeAiInput)
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
 
-function md(raw) {
+function renderMd(raw) {
   let t = esc(raw)
   t = t.replace(/```([\s\S]*?)```/g, (_, c) => `<pre><code>${c}</code></pre>`)
   t = t.replace(/`([^`\n]+)`/g, '<code>$1</code>')

@@ -6,124 +6,115 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="app">
+<div class="app">
 
-    <!-- ── Tab strip ───────────────────────────────────────────── -->
-    <div class="tab-strip" id="tabStrip">
-      <div class="traffic-gap"></div>
-      <div class="tabs-list" id="tabsList"></div>
-      <button class="tab-new" id="tabNewSession" title="New AI session">+</button>
-      <button class="tab-new-browser" id="tabNewBrowser" title="New browser tab">
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5.5" stroke="currentColor" stroke-width="1.4"/><path d="M1 6.5h11M6.5 1c-1.5 2-2 3.5-2 5.5s.5 3.5 2 5.5M6.5 1c1.5 2 2 3.5 2 5.5s-.5 3.5-2 5.5" stroke="currentColor" stroke-width="1.2"/></svg>
-      </button>
-    </div>
-
-    <!-- ── Browser nav bar (shown only for browser tabs) ────────── -->
-    <div class="nav-bar" id="navBar" style="display:none">
-      <button class="nav-btn" id="navBack" title="Back" disabled>
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
-      <button class="nav-btn" id="navForward" title="Forward" disabled>
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 2l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
-      <button class="nav-btn" id="navReload" title="Reload">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M12 2.5A5.5 5.5 0 1 0 13 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="9,1 12,2.5 10.5,5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-      </button>
-      <div class="url-wrap">
-        <svg class="url-lock" width="11" height="11" viewBox="0 0 11 11" fill="none"><rect x="1" y="5" width="9" height="5.5" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M3 5V3.5a2.5 2.5 0 015 0V5" stroke="currentColor" stroke-width="1.2"/></svg>
-        <input class="url-input" id="urlInput" type="text" placeholder="Search or enter URL…" autocomplete="off" spellcheck="false"/>
-      </div>
-    </div>
-
-    <!-- ── Workspace ─────────────────────────────────────────────── -->
-    <div class="workspace">
-
-      <!-- Sidebar -->
-      <div class="sidebar">
-        <div class="sb-logo">🍓</div>
-        <button class="sb-btn" id="sbNewSession" title="New AI session">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        </button>
-        <button class="sb-btn" id="sbNewBrowser" title="Open browser tab">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.5"/><path d="M1.5 8h13M8 1.5c-2 2.5-2.5 4-2.5 6.5s.5 4 2.5 6.5M8 1.5c2 2.5 2.5 4 2.5 6.5S10 12 8 14.5" stroke="currentColor" stroke-width="1.3"/></svg>
-        </button>
-        <button class="sb-btn" title="History" id="sbHistory">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3.5l2 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-        </button>
-        <div class="sb-spacer"></div>
-        <button class="sb-btn sb-avatar" id="avatarBtn">GK</button>
-      </div>
-
-      <!-- Main canvas -->
-      <div class="main-col">
-
-        <!-- Top bar (AI session mode) -->
-        <div class="topbar" id="topbar">
-          <div class="breadcrumb">
-            <span class="bc-home">strawberry</span>
-            <span class="bc-sep">/</span>
-            <span class="bc-title" id="sessionTitle">New session</span>
-          </div>
-          <div class="topbar-actions">
-            <button class="topbar-btn outline" id="analyzeBtn">🔍 Analyze page</button>
-            <button class="topbar-btn solid" id="openChatBtn">💬 Chat</button>
-          </div>
-        </div>
-
-        <!-- Feed (session tabs) -->
-        <div class="feed" id="feed">
-          <div class="feed-empty" id="feedEmpty">
-            <div class="feed-empty-icon">🍓</div>
-            <div class="feed-empty-title">What can I help you with?</div>
-            <div class="feed-empty-sub">Research topics · Analyze open browser tabs · Automate tasks</div>
-          </div>
-        </div>
-
-        <!-- Browser overlay bar (browser tabs) — sits above BrowserView -->
-        <div class="browser-ai-bar" id="browserAiBar" style="display:none">
-          <button class="bai-pill" id="baiAnalyze">🔍 Analyze this page</button>
-          <button class="bai-pill" id="baiLinks">🔗 Extract links</button>
-          <button class="bai-pill" id="baiSummarize">📄 Summarize</button>
-        </div>
-
-        <!-- Input area -->
-        <div class="input-area" id="inputArea">
-          <div class="input-box">
-            <button class="input-add" title="Attach">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            </button>
-            <textarea id="mainInput" class="main-input" placeholder="Ask Strawberry anything…" rows="1"></textarea>
-            <div class="input-right">
-              <span class="smart-badge">★ Smart</span>
-              <button class="agent-pill">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="5" r="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M2 12c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-              </button>
-              <button class="send-btn" id="sendBtn">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 12V4M4 8l4-4 4 4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              </button>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- Profile popup -->
-    <div class="profile-popup" id="profilePopup">
-      <div class="pp-user">
-        <div class="pp-avatar">GK</div>
-        <div>
-          <div class="pp-name">Gursharan Singh Kohli</div>
-          <div class="pp-credits-label">Powered by Claude</div>
-        </div>
-      </div>
-      <div class="pp-divider"></div>
-      <button class="pp-item" id="ppHistory">📚 View history</button>
-      <button class="pp-item">⚙️ Settings</button>
-      <button class="pp-item">💬 Give feedback</button>
-    </div>
-
+  <!-- ── Chrome-style tab strip ───────────────────────────────── -->
+  <div class="tab-strip" id="tabStrip">
+    <div class="traffic-gap"></div>
+    <div class="tabs-list" id="tabsList"></div>
+    <button class="tab-add" id="tabAdd" title="New tab">+</button>
   </div>
-  <script src="renderer.js"></script>
+
+  <!-- ── Navigation row ───────────────────────────────────────── -->
+  <div class="nav-row" id="navRow">
+    <button class="nav-btn" id="navBack" disabled>
+      <svg width="15" height="15" viewBox="0 0 15 15"><path d="M10 2L5 7.5L10 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+    </button>
+    <button class="nav-btn" id="navForward" disabled>
+      <svg width="15" height="15" viewBox="0 0 15 15"><path d="M5 2L10 7.5L5 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+    </button>
+    <button class="nav-btn" id="navReload">
+      <svg width="15" height="15" viewBox="0 0 15 15"><path d="M13 3A6 6 0 1 0 14 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><polyline points="10,1 13,3 11,6" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" fill="none"/></svg>
+    </button>
+
+    <!-- Session context URL bar -->
+    <div class="url-bar-wrap" id="urlBarWrap">
+      <svg class="url-bar-icon" width="14" height="14" viewBox="0 0 14 14"><path d="M7 1.5C3.96 1.5 1.5 3.96 1.5 7S3.96 12.5 7 12.5 12.5 10.04 12.5 7 10.04 1.5 7 1.5z" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M1.5 7h11M7 1.5C5.5 4 5 5.5 5 7s.5 3 2 5.5M7 1.5C8.5 4 9 5.5 9 7s-.5 3-2 5.5" stroke="currentColor" stroke-width="1.1" fill="none"/></svg>
+      <input id="urlInput" class="url-input" placeholder="Search or enter URL…" autocomplete="off" spellcheck="false"/>
+    </div>
+
+    <div class="nav-actions">
+      <button class="nav-action-btn outline" id="btnUpdateNow">
+        <svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 2v7M3 6l3-4 3 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+        Update Now
+      </button>
+      <button class="nav-action-btn solid" id="btnChat">
+        <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1h10v7H7l-3 3V8H1z" stroke="white" stroke-width="1.4" fill="none" stroke-linejoin="round"/></svg>
+        Chat
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Canvas (sidebar + browser area) ──────────────────────── -->
+  <div class="canvas">
+
+    <!-- Left sidebar -->
+    <div class="sidebar" id="sidebar">
+      <div class="sb-logo">
+        <svg width="22" height="22" viewBox="0 0 22 22"><rect width="22" height="22" rx="5" fill="#E8430A"/><rect x="5" y="5" width="5" height="5" rx="1" fill="white"/><rect x="12" y="5" width="5" height="5" rx="1" fill="white"/><rect x="5" y="12" width="5" height="5" rx="1" fill="white"/><rect x="12" y="12" width="5" height="5" rx="1" fill="white"/></svg>
+      </div>
+      <button class="sb-btn" id="sbNew" title="New tab">
+        <svg width="15" height="15" viewBox="0 0 15 15"><path d="M7.5 2v11M2 7.5h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+      <button class="sb-btn" title="Share">
+        <svg width="15" height="15" viewBox="0 0 15 15"><path d="M7.5 2v9M4 5l3.5-3L11 5M3 10v3h9v-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+      </button>
+      <button class="sb-btn" id="sbHistory" title="History">
+        <svg width="15" height="15" viewBox="0 0 15 15"><circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M7.5 4.5V8l2 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+      <div class="sb-spacer"></div>
+      <button class="sb-avatar" id="sbAvatar">GK</button>
+    </div>
+
+    <!-- Browser shell — BrowserView is anchored here by main process -->
+    <div class="browser-shell" id="browserShell">
+
+      <!-- New-tab page (visible when no URL loaded) -->
+      <div class="new-tab-page" id="newTabPage">
+        <div class="nt-logo">🍓</div>
+        <div class="nt-title">Strawberry</div>
+        <div class="nt-search-wrap">
+          <input id="ntSearch" class="nt-search" placeholder="Search or enter a URL…" autocomplete="off" spellcheck="false"/>
+          <button class="nt-go" id="ntGo">Go</button>
+        </div>
+        <div class="nt-hint">Press <kbd>Enter</kbd> to search Google, or type a URL</div>
+      </div>
+
+      <!-- AI chat overlay — floats above the BrowserView -->
+      <div class="ai-overlay" id="aiOverlay">
+
+        <!-- Drag handle to resize -->
+        <div class="ai-drag-handle" id="aiDragHandle"></div>
+
+        <!-- Thread -->
+        <div class="ai-thread" id="aiThread"></div>
+
+        <!-- Input row -->
+        <div class="ai-input-row" id="aiInputRow">
+          <button class="ai-attach" title="Attach">
+            <svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 2v10M4 6l4-4 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M3 14h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+          <textarea id="aiInput" class="ai-input" placeholder="Ask Strawberry anything…" rows="1"></textarea>
+          <div class="ai-input-meta">
+            <span class="smart-tag">★ Smart</span>
+            <button class="agent-sel">
+              <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="4.5" r="2.5" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M2 12c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none"/></svg>
+              <svg width="8" height="8" viewBox="0 0 8 8"><path d="M2 3l2 2 2-2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+            </button>
+            <button class="ai-send" id="aiSend">
+              <svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 12V4M4 8l4-4 4 4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Session label tab -->
+        <div class="session-tab" id="sessionTab">Strawberry</div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+<script src="renderer.js"></script>
 </body>
 </html>
