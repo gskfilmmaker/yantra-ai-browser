@@ -71,21 +71,30 @@
         <svg width="15" height="15" viewBox="0 0 15 15"><circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M7.5 4.5V8l2 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
       </button>
       <div class="sb-spacer"></div>
-      <button class="sb-avatar" id="sbAvatar">GK</button>
+      <button class="sb-avatar" id="sbAvatar" title="Create agent">+</button>
     </div>
 
     <!-- Browser shell — BrowserView is anchored here by main process -->
     <div class="browser-shell" id="browserShell">
 
-      <!-- New-tab page (visible when no URL loaded) -->
+      <!-- New-tab page (AI-first) -->
       <div class="new-tab-page" id="newTabPage">
-        <div class="nt-logo">🍓</div>
-        <div class="nt-title">Strawberry</div>
-        <div class="nt-search-wrap">
-          <input id="ntSearch" class="nt-search" placeholder="Search or enter a URL…" autocomplete="off" spellcheck="false"/>
-          <button class="nt-go" id="ntGo">Go</button>
+        <div class="nt-agent-avatar" id="ntAgentAvatar">🔍</div>
+        <div class="nt-agent-name" id="ntAgentName">Research Agent</div>
+        <div class="nt-subtitle">How can I help you today?</div>
+        <div class="nt-chips">
+          <button class="nt-chip" data-msg="Summarize the current page and highlight key insights.">Summarize page</button>
+          <button class="nt-chip" data-msg="Search the web and find the latest news on AI and technology.">Latest news</button>
+          <button class="nt-chip" data-msg="Extract all tables and structured data from this page.">Extract data</button>
+          <button class="nt-chip" data-msg="What can you help me with? Give me an overview of your capabilities.">Your capabilities</button>
         </div>
-        <div class="nt-hint">Press <kbd>Enter</kbd> to search Google, or type a URL</div>
+        <div class="nt-input-wrap">
+          <input id="ntSearch" class="nt-search" placeholder="Ask anything, or type a URL to browse…" autocomplete="off" spellcheck="false"/>
+          <button class="nt-go" id="ntGo">
+            <svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 12V4M4 8l4-4 4 4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <div class="nt-hint">Type a URL to browse · Press <kbd>Enter</kbd> to ask Strawberry</div>
       </div>
 
       <!-- Find bar — floats top-right when Cmd+F is pressed -->
@@ -129,6 +138,54 @@
         <!-- Session label tab -->
         <div class="session-tab" id="sessionTab">Strawberry</div>
 
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Agent creation modal ──────────────────────────────────── -->
+  <div class="modal-overlay" id="agentModal" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Create Agent</span>
+        <button class="modal-close" id="agentModalClose">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-row">
+          <div class="modal-field" style="width:80px">
+            <label class="field-label">Avatar</label>
+            <input id="agentAvatar" class="field-input field-emoji" maxlength="4" value="🤖">
+          </div>
+          <div class="modal-field" style="flex:1">
+            <label class="field-label">Name</label>
+            <input id="agentName" class="field-input" placeholder="My Agent">
+          </div>
+        </div>
+        <div class="modal-field">
+          <label class="field-label">Description</label>
+          <input id="agentDesc" class="field-input" placeholder="What does this agent specialize in?">
+        </div>
+        <div class="modal-field">
+          <label class="field-label">System Prompt</label>
+          <textarea id="agentPrompt" class="field-textarea" placeholder="You are a specialized AI assistant that…" rows="4"></textarea>
+        </div>
+        <div class="modal-field">
+          <label class="field-label">Memory Scope</label>
+          <select id="agentMemory" class="field-select">
+            <option value="global">Global — shared across all sessions</option>
+            <option value="session">Session — cleared each session</option>
+            <option value="project">Project — per-project context</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label class="field-label">
+            <input type="checkbox" id="agentAutoContext" checked style="margin-right:6px">
+            Auto-inject current page context
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn modal-cancel" id="agentModalCancel">Cancel</button>
+        <button class="modal-btn modal-save"   id="agentModalSave">Create Agent</button>
       </div>
     </div>
   </div>

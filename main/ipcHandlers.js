@@ -9,6 +9,7 @@ const memoryStore    = require('./memoryStore')
 const agentManager   = require('./agents/agentManager')
 const contextEngine  = require('./ai/contextEngine')
 const llmClient      = require('./ai/llmClient')
+const planner        = require('./ai/planner')
 const registry       = require('./tools/registry')
 const routineManager = require('./routines/routineManager')
 
@@ -17,6 +18,8 @@ require('./tools/browserTools')
 require('./tools/contentTools')
 require('./tools/memoryTools')
 require('./tools/routineTools')
+require('./tools/extractionTools')
+require('./tools/documentTools')
 
 // ── Per-session conversation history (server-side) ───────────────────────────
 const sessionHistory = new Map()
@@ -95,18 +98,33 @@ function register() {
       // 1. Get active agent
       const agent = agentManager.getActiveAgent()
 
-      // 2. Build structured context (page + memory injection)
-      const ctx = await contextEngine.buildContext({ agent, userPrompt: message, sessionId })
+      // 2. Run planner + build context concurrently
+      const [plan, ctx] = await Promise.all([
+        planner.classify(message).catch(() => ({ type: 'simple' })),
+        contextEngine.buildContext({ agent, userPrompt: message, sessionId }),
+      ])
 
-      // 3. Combine context prefix with user message
-      const fullMessage = ctx.contextPrefix
+      // 3. If multi-step plan, emit it to the renderer as a plan card
+      if (plan.type === 'multi_step' && plan.steps?.length) {
+        event.sender.send('agent-event', {
+          sessionId, type: 'plan',
+          title: plan.title, steps: plan.steps,
+        })
+      }
+
+      // 4. Combine context prefix with user message (+ plan guidance if multi-step)
+      let fullMessage = ctx.contextPrefix
         ? `${ctx.contextPrefix}\n\n---\n\nUSER REQUEST:\n${message}`
         : message
 
-      // 4. Get tool schemas filtered to this agent's permissions
+      if (plan.type === 'multi_step' && plan.steps?.length) {
+        fullMessage += `\n\n---\n\nPLAN TO FOLLOW:\n${plan.steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\nExecute these steps systematically.`
+      }
+
+      // 5. Get tool schemas filtered to this agent's permissions
       const tools = registry.schemasForAgent(agent.tools)
 
-      // 5. Run the streaming agent loop
+      // 6. Run the streaming agent loop
       const priorHistory = sessionHistory.get(sessionId) || []
       const finalMessages = await llmClient.runAgentLoop({
         event,

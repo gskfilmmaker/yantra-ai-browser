@@ -43,6 +43,35 @@ const DEFAULT_AGENTS = [
     autoContext: false,
     defaultActions: [],
   },
+  {
+    id: 'analyst',
+    name: 'Data Analyst',
+    avatar: '🧮',
+    description: 'Extracts tables, entities, and structured data from pages',
+    systemPrompt: `You are a data analyst specializing in extracting, organizing, and analyzing structured data from web pages. Use extractTable to get tabular data, extractEntities for prices/contacts/dates, exportCSV to save data, and generateReport for structured output. Always present data in clean, organized formats with clear headers. When asked about data on a page, first extract it before analyzing.`,
+    tools: ['get_current_page', 'extractTable', 'exportCSV', 'extractEntities', 'getSelectedText', 'generateReport', 'exportPDF', 'save_note', 'saveFinding', 'web_search'],
+    memoryScope: 'project',
+    autoContext: true,
+    defaultActions: [],
+  },
+  {
+    id: 'orchestrator',
+    name: 'Orchestrator',
+    avatar: '🎯',
+    description: 'Breaks complex tasks into steps and coordinates execution',
+    systemPrompt: `You are a planning and orchestration specialist. For complex tasks, always think step-by-step:
+1. PLAN: Break the task into clear sequential steps
+2. RESEARCH: Gather necessary information (web_search, fetch_webpage)
+3. EXTRACT: Pull structured data (extractTable, extractEntities)
+4. SYNTHESIZE: Combine findings into clear output
+5. OUTPUT: Save reports (generateReport) or data (exportCSV)
+
+Announce your plan before executing. Use the right tool for each step. Save important findings to memory.`,
+    tools: ['web_search', 'fetch_webpage', 'get_current_page', 'get_all_tabs', 'open_url', 'extractLinks', 'extractTable', 'exportCSV', 'extractEntities', 'getSelectedText', 'generateReport', 'exportPDF', 'saveFinding', 'save_note', 'getRecentFindings', 'searchMemory', 'listRoutines', 'runRoutine'],
+    memoryScope: 'global',
+    autoContext: true,
+    defaultActions: [],
+  },
 ]
 
 function ensureDir() {
@@ -51,9 +80,16 @@ function ensureDir() {
 
 function load() {
   ensureDir()
-  if (!fs.existsSync(FILE)) return { agents: DEFAULT_AGENTS, activeId: DEFAULT_AGENTS[0].id }
-  try { return JSON.parse(fs.readFileSync(FILE, 'utf8')) }
-  catch { return { agents: DEFAULT_AGENTS, activeId: DEFAULT_AGENTS[0].id } }
+  if (!fs.existsSync(FILE)) return { agents: [...DEFAULT_AGENTS], activeId: DEFAULT_AGENTS[0].id }
+  try {
+    const data = JSON.parse(fs.readFileSync(FILE, 'utf8'))
+    // Merge any new default agents that aren't yet in saved data
+    const savedIds = new Set((data.agents || []).map(a => a.id))
+    for (const def of DEFAULT_AGENTS) {
+      if (!savedIds.has(def.id)) data.agents.push(def)
+    }
+    return data
+  } catch { return { agents: [...DEFAULT_AGENTS], activeId: DEFAULT_AGENTS[0].id } }
 }
 
 function save(data) {
