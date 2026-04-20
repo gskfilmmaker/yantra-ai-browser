@@ -67,8 +67,10 @@ contextBridge.exposeInMainWorld('strawberry', {
     run:    (id)      => ipcRenderer.invoke('routine:run', id),
   },
   memory: {
-    search: (q) => ipcRenderer.invoke('memory:search', q),
-    clear:  ()  => ipcRenderer.invoke('memory:clear'),
+    getAll:  ()      => ipcRenderer.invoke('memory:getAll'),
+    delete:  (id)    => ipcRenderer.invoke('memory:delete', id),
+    search:  (q)     => ipcRenderer.invoke('memory:search', q),
+    clear:   ()      => ipcRenderer.invoke('memory:clear'),
   },
   sessions: {
     clear: () => ipcRenderer.invoke('sessions:clear'),

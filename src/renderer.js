@@ -625,13 +625,91 @@ $('btnUpdateNow').addEventListener('click', () => {
   sendMessage(msg)
 })
 
-$('sbHistory').addEventListener('click', async () => {
-  const hist = await api.memory.getHistory(10)
-  const text = hist.length
-    ? hist.map(h => `**${h.title||h.type}** — ${h.timestamp?.slice(0,10)}\n${(h.result||'').slice(0,200)}`).join('\n\n---\n\n')
-    : 'No history yet.'
-  addCard({ id: `hist-${Date.now()}`, type: 'text', text: '## Recent Research\n\n' + text })
-})
+// ─── Memory browser ───────────────────────────────────────────────────────────
+
+let _allMemory = []
+
+async function openMemoryPanel() {
+  $('memOverlay').hidden = false
+  _allMemory = await strawberry.memory.getAll()
+  renderMemoryList(_allMemory)
+}
+
+function closeMemoryPanel() { $('memOverlay').hidden = true }
+
+function renderMemoryList(items) {
+  const list  = $('memList')
+  const empty = $('memEmpty')
+
+  if (!items.length) {
+    list.innerHTML = ''
+    empty.hidden = false
+    return
+  }
+
+  empty.hidden = true
+  const typeIcon = { research: '🔍', routine_run: '⚡', note: '📝', finding: '📌' }
+
+  list.innerHTML = items.map(m => {
+    const icon    = typeIcon[m.type] || '💾'
+    const date    = (m.timestamp || '').slice(0, 10)
+    const title   = esc(m.title || m.type || 'Memory')
+    const snippet = esc((m.result || '').slice(0, 120))
+    const url     = m.url ? `<a class="mem-url" href="#" data-url="${esc(m.url)}" title="${esc(m.url)}">${esc(new URL(m.url).hostname)}</a>` : ''
+    return `
+      <div class="mem-item" data-id="${esc(String(m.id))}">
+        <div class="mem-item-header">
+          <span class="mem-icon">${icon}</span>
+          <div class="mem-item-info">
+            <div class="mem-item-title">${title}</div>
+            <div class="mem-item-meta">${date}${url ? ' · ' + url : ''}</div>
+          </div>
+          <button class="mem-del-btn" data-id="${esc(String(m.id))}" title="Delete">×</button>
+        </div>
+        ${snippet ? `<div class="mem-item-snippet">${snippet}${m.result?.length > 120 ? '…' : ''}</div>` : ''}
+      </div>
+    `
+  }).join('')
+
+  list.querySelectorAll('.mem-del-btn').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation()
+      await strawberry.memory.delete(btn.dataset.id)
+      _allMemory = _allMemory.filter(m => String(m.id) !== btn.dataset.id)
+      renderMemoryList(filterMemory($('memSearch').value))
+    })
+  })
+
+  list.querySelectorAll('.mem-url').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault(); e.stopPropagation()
+      navigate(a.dataset.url)
+      closeMemoryPanel()
+    })
+  })
+
+  list.querySelectorAll('.mem-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const m = _allMemory.find(x => String(x.id) === el.dataset.id)
+      if (m) {
+        closeMemoryPanel()
+        addCard({ id: `mem-view-${Date.now()}`, type: 'text',
+          text: `## ${m.title || m.type}\n\n${m.result || ''}` })
+      }
+    })
+  })
+}
+
+function filterMemory(q) {
+  if (!q.trim()) return _allMemory
+  const lq = q.toLowerCase()
+  return _allMemory.filter(m => JSON.stringify(m).toLowerCase().includes(lq))
+}
+
+$('memSearch').addEventListener('input', e => renderMemoryList(filterMemory(e.target.value)))
+$('sbHistory').addEventListener('click',  openMemoryPanel)
+$('memCloseBtn').addEventListener('click', closeMemoryPanel)
+$('memOverlay').addEventListener('click',  e => { if (e.target === $('memOverlay')) closeMemoryPanel() })
 
 // ─── BrowserView bounds ───────────────────────────────────────────────────────
 

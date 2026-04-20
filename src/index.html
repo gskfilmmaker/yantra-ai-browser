@@ -145,6 +145,25 @@
     </div>
   </div>
 
+  <!-- ── Memory browser panel ─────────────────────────────────── -->
+  <div class="rp-overlay" id="memOverlay" hidden>
+    <div class="rp-panel">
+      <div class="rp-header">
+        <span class="rp-title">📚 Memory</span>
+        <div class="mem-search-wrap">
+          <input id="memSearch" class="mem-search" placeholder="Search…" autocomplete="off">
+        </div>
+        <button class="rp-close-btn" id="memCloseBtn">×</button>
+      </div>
+      <div class="rp-list" id="memList"></div>
+      <div class="rp-empty" id="memEmpty" hidden>
+        <div class="rp-empty-icon">📚</div>
+        <div class="rp-empty-title">No memories yet</div>
+        <div class="rp-empty-sub">Research results, routine outputs, and notes will appear here.</div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Routines panel ───────────────────────────────────────── -->
   <div class="rp-overlay" id="rpOverlay" hidden>
     <div class="rp-panel">

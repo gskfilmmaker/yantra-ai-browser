@@ -42,4 +42,12 @@ function search(query) {
     .join('\n\n---\n\n')
 }
 
-module.exports = { save, getHistory, search }
+function getAll() { return load() }
+
+function deleteEntry(id) {
+  const items = load().filter(i => String(i.id) !== String(id))
+  ensureDir()
+  fs.writeFileSync(FILE, JSON.stringify(items, null, 2))
+}
+
+module.exports = { save, getHistory, getAll, deleteEntry, search }

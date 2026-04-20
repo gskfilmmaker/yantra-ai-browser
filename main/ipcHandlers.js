@@ -70,9 +70,11 @@ function register() {
   ipcMain.handle('browser:stopFindInPage',()              => tabManager.stopFindInPage())
 
   // ── Memory ──────────────────────────────────────────────────────────────────
-  ipcMain.handle('memory:save',       (_, e) => memoryStore.save(e))
-  ipcMain.handle('memory:getHistory', (_, n) => memoryStore.getHistory(n))
-  ipcMain.handle('memory:search',     (_, q) => memoryStore.search(q))
+  ipcMain.handle('memory:save',       (_, e)  => memoryStore.save(e))
+  ipcMain.handle('memory:getHistory', (_, n)  => memoryStore.getHistory(n))
+  ipcMain.handle('memory:getAll',     ()      => memoryStore.getAll())
+  ipcMain.handle('memory:delete',     (_, id) => memoryStore.deleteEntry(id))
+  ipcMain.handle('memory:search',     (_, q)  => memoryStore.search(q))
 
   // ── Agent CRUD ──────────────────────────────────────────────────────────────
   ipcMain.handle('agent:list',      ()        => agentManager.listAgents())
