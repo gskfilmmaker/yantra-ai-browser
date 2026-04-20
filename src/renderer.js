@@ -3,16 +3,14 @@
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
-let tabs        = []    // [{id, url, title, loading, favicon, canGoBack, canGoForward}]
+let tabs        = []
 let activeTabId = null
 let isRunning   = false
-let activeAgent = null  // current agent config
+let activeAgent = null
 
-// Per-tab conversation cards: tabId → {items:[]}
-// Conversation history lives in the main process (sessionHistory Map)
 const convos = {}
 
-// ─── Agent system bootstrap ───────────────────────────────────────────────────
+// ─── Agent bootstrap ──────────────────────────────────────────────────────────
 
 async function initAgents() {
   try {
@@ -23,12 +21,15 @@ async function initAgents() {
 
 function updateAgentUI() {
   if (!activeAgent) return
-  // Update agent selector button
   const avatar = $('agentSelAvatar')
   if (avatar) avatar.textContent = activeAgent.avatar || '🤖'
-  // Update context bar agent label
   const ctxAgent = $('ctxAgent')
   if (ctxAgent) ctxAgent.textContent = activeAgent.name
+  // Update new-tab page
+  const ntAvatar = $('ntAgentAvatar')
+  const ntName   = $('ntAgentName')
+  if (ntAvatar) ntAvatar.textContent = activeAgent.avatar || '🤖'
+  if (ntName)   ntName.textContent   = activeAgent.name   || 'Strawberry'
 }
 
 initAgents()
@@ -61,7 +62,6 @@ api.on.tabUpdated((tab) => {
 })
 
 api.on.tabClosed(({ tabs: t }) => { tabs = t; renderTabs() })
-
 api.on.agentEvent(handleAgentEvent)
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
@@ -72,12 +72,9 @@ function renderTabs() {
   tabs.forEach(tab => {
     const el = document.createElement('div')
     el.className = `tab${tab.id === activeTabId ? ' active' : ''}`
-
-    // Favicon
     const faviconHTML = tab.favicon
       ? `<img class="tab-favicon" src="${tab.favicon}" onerror="this.style.display='none'">`
       : `<span class="tab-favicon-emoji">🌐</span>`
-
     el.innerHTML = `
       ${faviconHTML}
       <span class="tab-title">${esc(tab.loading ? 'Loading…' : tab.title || 'New Tab')}</span>
@@ -101,7 +98,6 @@ $('sbNew').addEventListener('click',  () => api.tab.create({ type: 'browser', ur
 function syncURL(tab) {
   const t = tab || tabs.find(t => t.id === activeTabId)
   if (!t) return
-  // URL bar shows "strawberry / title" when a page is loaded, raw URL otherwise
   const input = $('urlInput')
   if (t.title && t.url && !t.url.startsWith('about:')) {
     input.value = `strawberry / ${t.title}`
@@ -121,8 +117,7 @@ function syncContextBar(tab) {
   const bar = $('contextBar')
   if (!bar) return
   if (!tab?.url || tab.url === 'about:blank' || tab.url === '') {
-    bar.hidden = true
-    return
+    bar.hidden = true; return
   }
   bar.hidden = false
   const favicon = $('ctxFavicon')
@@ -148,27 +143,62 @@ function navigate(raw) {
   api.browser.navigate(url)
 }
 
-$('navBack').addEventListener('click', () => api.browser.goBack())
+$('navBack').addEventListener('click',    () => api.browser.goBack())
 $('navForward').addEventListener('click', () => api.browser.goForward())
-$('navReload').addEventListener('click', () => api.browser.reload())
+$('navReload').addEventListener('click',  () => api.browser.reload())
 
 $('urlInput').addEventListener('focus', e => {
-  // Show real URL when focused
   if (e.target.dataset.realUrl) e.target.value = e.target.dataset.realUrl
   e.target.select()
 })
-$('urlInput').addEventListener('blur', e => syncURL())
+$('urlInput').addEventListener('blur',    () => syncURL())
 $('urlInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') { navigate(e.target.value); e.target.blur() }
   if (e.key === 'Escape') { e.target.blur() }
 })
 
-// New tab page search
-$('ntSearch').addEventListener('keydown', e => { if (e.key === 'Enter') navigate($('ntSearch').value) })
-$('ntGo').addEventListener('click', () => navigate($('ntSearch').value))
+// ─── New-tab page (AI-first) ──────────────────────────────────────────────────
+
+function handleNewTabInput(text) {
+  text = text.trim()
+  if (!text) return
+  const isURL = text.startsWith('http') || text.startsWith('www.') ||
+    /^[\w-]+\.[a-z]{2,}(\/|$)/i.test(text)
+  if (isURL) {
+    navigate(text)
+  } else {
+    hideNewTabPage()
+    aiOverlay.style.display = 'flex'
+    scheduleBoundsUpdate()
+    sendMessage(text)
+  }
+}
+
+$('ntSearch').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { handleNewTabInput($('ntSearch').value); $('ntSearch').value = '' }
+})
+$('ntGo').addEventListener('click', () => {
+  handleNewTabInput($('ntSearch').value); $('ntSearch').value = ''
+})
+
+// Quick-action chips
+document.querySelectorAll('.nt-chip').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const msg = btn.dataset.msg
+    if (msg) {
+      hideNewTabPage()
+      aiOverlay.style.display = 'flex'
+      scheduleBoundsUpdate()
+      sendMessage(msg)
+    }
+  })
+})
 
 function hideNewTabPage() { $('newTabPage').classList.add('hidden') }
-function showNewTabPage() { $('newTabPage').classList.remove('hidden'); $('ntSearch').focus() }
+function showNewTabPage() {
+  $('newTabPage').classList.remove('hidden')
+  $('ntSearch').focus()
+}
 
 // ─── Agent picker ─────────────────────────────────────────────────────────────
 
@@ -188,7 +218,10 @@ agentSel?.addEventListener('click', async (e) => {
         <div class="agent-option-desc">${esc(a.description || '')}</div>
       </div>
     </div>
-  `).join('')
+  `).join('') + `
+    <div class="agent-picker-sep"></div>
+    <button class="agent-picker-new" id="agentPickerNew">+ Create new agent</button>
+  `
 
   agentPicker.querySelectorAll('.agent-option').forEach(el => {
     el.addEventListener('click', async () => {
@@ -196,14 +229,66 @@ agentSel?.addEventListener('click', async (e) => {
       activeAgent = await strawberry.agents.getActive()
       updateAgentUI()
       agentPicker.hidden = true
-      addCard({ id: `agent-${Date.now()}`, type: 'text', text: `Switched to **${activeAgent.name}** ${activeAgent.avatar || ''}` })
+      addCard({ id: `agent-${Date.now()}`, type: 'text',
+        text: `Switched to **${activeAgent.name}** ${activeAgent.avatar || ''}` })
     })
+  })
+
+  $('agentPickerNew')?.addEventListener('click', () => {
+    agentPicker.hidden = true
+    openAgentModal()
   })
 
   agentPicker.hidden = false
 })
 
 document.addEventListener('click', () => { if (agentPicker) agentPicker.hidden = true })
+
+// ─── Agent creation modal ─────────────────────────────────────────────────────
+
+const agentModal = $('agentModal')
+
+function openAgentModal() {
+  $('agentAvatar').value      = '🤖'
+  $('agentName').value        = ''
+  $('agentDesc').value        = ''
+  $('agentPrompt').value      = ''
+  $('agentMemory').value      = 'global'
+  $('agentAutoContext').checked = true
+  agentModal.hidden = false
+}
+
+function closeAgentModal() { agentModal.hidden = true }
+
+$('agentModalClose').addEventListener('click',  closeAgentModal)
+$('agentModalCancel').addEventListener('click', closeAgentModal)
+agentModal.addEventListener('click', e => { if (e.target === agentModal) closeAgentModal() })
+
+$('agentModalSave').addEventListener('click', async () => {
+  const name = $('agentName').value.trim()
+  if (!name) { $('agentName').focus(); return }
+
+  const cfg = {
+    name,
+    avatar:       $('agentAvatar').value.trim() || '🤖',
+    description:  $('agentDesc').value.trim(),
+    systemPrompt: $('agentPrompt').value.trim() || `You are ${name}, a helpful AI assistant.`,
+    tools: ['web_search', 'fetch_webpage', 'get_current_page', 'extractTable', 'extractEntities',
+            'generateReport', 'save_note', 'saveFinding', 'searchMemory'],
+    memoryScope:  $('agentMemory').value,
+    autoContext:  $('agentAutoContext').checked,
+  }
+
+  const created = await strawberry.agents.create(cfg)
+  closeAgentModal()
+  await strawberry.agents.setActive(created.id)
+  activeAgent = await strawberry.agents.getActive()
+  updateAgentUI()
+  addCard({ id: `created-${Date.now()}`, type: 'text',
+    text: `Created and activated **${created.name}** ${created.avatar}` })
+})
+
+$('sbAvatar').addEventListener('click', openAgentModal)
 
 // ─── Routine events ───────────────────────────────────────────────────────────
 
@@ -214,20 +299,20 @@ strawberry.on.routineEvent(ev => {
   } else if (ev.type === 'done') {
     const item = convo().items.find(i => i.id === `rt-${ev.routineId}-start`)
     if (item) { item.status = 'done'; item.summary = ev.result?.slice(0, 80); patchCard(item.id) }
-    addCard({ id: `rt-${ev.routineId}-result`, type: 'text', text: `**Routine: ${ev.routineName}**\n\n${ev.result}` })
+    addCard({ id: `rt-${ev.routineId}-result`, type: 'text',
+      text: `**Routine: ${ev.routineName}**\n\n${ev.result}` })
   } else if (ev.type === 'error') {
-    addCard({ id: `rt-${ev.routineId}-err`, type: 'error', text: `Routine "${ev.routineName}": ${ev.error}` })
+    addCard({ id: `rt-${ev.routineId}-err`, type: 'error',
+      text: `Routine "${ev.routineName}": ${ev.error}` })
   }
 })
 
 // ─── URL bar focus ────────────────────────────────────────────────────────────
 
-// Cmd+L from main menu focuses URL bar even when BrowserView has focus
 api.on.focusUrlBar(() => {
   const input = $('urlInput')
   if (input.dataset.realUrl) input.value = input.dataset.realUrl
-  input.focus()
-  input.select()
+  input.focus(); input.select()
 })
 
 // ─── Find in page ─────────────────────────────────────────────────────────────
@@ -236,23 +321,15 @@ const findBar   = $('findBar')
 const findInput = $('findInput')
 const findCount = $('findCount')
 
-function openFindBar() {
-  findBar.hidden = false
-  findInput.focus()
-  findInput.select()
-  scheduleBoundsUpdate()
+function openFindBar()  {
+  findBar.hidden = false; findInput.focus(); findInput.select(); scheduleBoundsUpdate()
 }
-
 function closeFindBar() {
-  findBar.hidden = true
-  findInput.value = ''
-  findCount.textContent = ''
-  api.browser.stopFindInPage()
-  scheduleBoundsUpdate()
+  findBar.hidden = true; findInput.value = ''; findCount.textContent = ''
+  api.browser.stopFindInPage(); scheduleBoundsUpdate()
 }
 
 api.on.startFind(openFindBar)
-
 api.on.findResult(({ activeMatchOrdinal, matches }) => {
   findCount.textContent = matches ? `${activeMatchOrdinal}/${matches}` : 'No results'
 })
@@ -261,33 +338,32 @@ findInput.addEventListener('input', () => {
   if (findInput.value.trim()) api.browser.findInPage(findInput.value)
   else { findCount.textContent = ''; api.browser.stopFindInPage() }
 })
-
 findInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    api.browser.findInPage(findInput.value, { forward: !e.shiftKey, findNext: true })
-  }
+  if (e.key === 'Enter') api.browser.findInPage(findInput.value, { forward: !e.shiftKey, findNext: true })
   if (e.key === 'Escape') closeFindBar()
 })
-
 $('findPrev').addEventListener('click',  () => api.browser.findInPage(findInput.value, { forward: false, findNext: true }))
 $('findNext').addEventListener('click',  () => api.browser.findInPage(findInput.value, { forward: true,  findNext: true }))
 $('findClose').addEventListener('click', closeFindBar)
 
-// Top right buttons
+// ─── Top nav buttons ──────────────────────────────────────────────────────────
+
 $('btnChat').addEventListener('click', () => {
   const overlay = $('aiOverlay')
   overlay.style.display = overlay.style.display === 'none' ? 'flex' : 'none'
   scheduleBoundsUpdate()
 })
+
 $('btnUpdateNow').addEventListener('click', () => {
   const tab = tabs.find(t => t.id === activeTabId)
   const msg = tab?.url && !tab.url.startsWith('about:')
     ? 'Summarize the current page and highlight the most important information.'
     : 'What can you help me with? Give me a quick overview of your capabilities.'
+  aiOverlay.style.display = 'flex'
+  scheduleBoundsUpdate()
   sendMessage(msg)
 })
 
-// History sidebar button
 $('sbHistory').addEventListener('click', async () => {
   const hist = await api.memory.getHistory(10)
   const text = hist.length
@@ -297,8 +373,6 @@ $('sbHistory').addEventListener('click', async () => {
 })
 
 // ─── BrowserView bounds ───────────────────────────────────────────────────────
-// Tells the main process exactly where to place the BrowserView
-// so it fills the space above the AI overlay.
 
 let boundsTimer = null
 function scheduleBoundsUpdate() {
@@ -307,10 +381,10 @@ function scheduleBoundsUpdate() {
 }
 
 function updateBrowserViewBounds() {
-  const sidebar   = $('sidebar')
-  const navRow    = $('navRow')
-  const overlay   = $('aiOverlay')
-  const tabStrip  = $('tabStrip')
+  const sidebar  = $('sidebar')
+  const navRow   = $('navRow')
+  const overlay  = $('aiOverlay')
+  const tabStrip = $('tabStrip')
 
   const sidebarW = sidebar.offsetWidth
   const topY     = tabStrip.offsetHeight + navRow.offsetHeight
@@ -318,8 +392,8 @@ function updateBrowserViewBounds() {
   const overlayH = overlay.offsetHeight
 
   api.browser.setBounds({
-    x: Math.round(sidebarW),
-    y: Math.round(topY),
+    x:      Math.round(sidebarW),
+    y:      Math.round(topY),
     width:  Math.round(window.innerWidth - sidebarW),
     height: Math.round(winH - topY - overlayH),
   })
@@ -327,7 +401,7 @@ function updateBrowserViewBounds() {
 
 window.addEventListener('resize', scheduleBoundsUpdate)
 
-// ─── AI overlay resize (drag handle) ─────────────────────────────────────────
+// ─── AI overlay drag resize ───────────────────────────────────────────────────
 
 let dragStart = null
 const dragHandle = $('aiDragHandle')
@@ -336,20 +410,20 @@ const aiOverlay  = $('aiOverlay')
 dragHandle.addEventListener('mousedown', e => {
   dragStart = { y: e.clientY, h: aiOverlay.offsetHeight }
   document.addEventListener('mousemove', onDragMove)
-  document.addEventListener('mouseup', onDragUp)
+  document.addEventListener('mouseup',   onDragUp)
 })
 
 function onDragMove(e) {
   if (!dragStart) return
   const delta = dragStart.y - e.clientY
-  const newH = Math.max(68, Math.min(500, dragStart.h + delta))
+  const newH  = Math.max(68, Math.min(500, dragStart.h + delta))
   aiOverlay.style.minHeight = newH + 'px'
   scheduleBoundsUpdate()
 }
 function onDragUp() {
   dragStart = null
   document.removeEventListener('mousemove', onDragMove)
-  document.removeEventListener('mouseup', onDragUp)
+  document.removeEventListener('mouseup',   onDragUp)
 }
 
 // ─── AI Thread ────────────────────────────────────────────────────────────────
@@ -372,23 +446,49 @@ function buildCard(item) {
 
 function cardHTML(item) {
   switch (item.type) {
+
     case 'user':
       return `<div class="card card-user"><div class="card-user-bubble">${esc(item.text)}</div></div>`
 
     case 'text':
       return `<div class="card"><div class="card-text">${renderMd(item.text)}</div></div>`
 
+    case 'plan': {
+      const steps = (item.steps || []).map((s, i) =>
+        `<li class="plan-step"><span class="plan-step-num">${i + 1}</span><span>${esc(s)}</span></li>`
+      ).join('')
+      return `<div class="card card-plan">
+        <div class="plan-header">
+          <span class="plan-icon">🎯</span>
+          <span class="plan-title">${esc(item.title || 'Multi-step plan')}</span>
+          <span class="plan-badge">Plan</span>
+        </div>
+        <ol class="plan-steps">${steps}</ol>
+      </div>`
+    }
+
     case 'tool_call': {
-      const icons = { web_search:'🔍', fetch_webpage:'📄', get_current_page:'🖥️', open_url:'🔗', get_all_tabs:'📑', save_note:'💾' }
-      const icon = icons[item.toolName] || '⚙️'
+      const icons = {
+        web_search: '🔍', fetch_webpage: '📄', get_current_page: '🖥️',
+        open_url: '🔗', get_all_tabs: '📑', save_note: '💾',
+        extractTable: '📊', exportCSV: '📁', extractEntities: '🏷️',
+        generateReport: '📝', exportPDF: '🖨️', getSelectedText: '✂️',
+      }
+      const icon  = icons[item.toolName] || '⚙️'
       const title = item.toolName === 'web_search'       ? `Searching: "${item.toolInput?.query}"`
                   : item.toolName === 'get_current_page' ? 'Reading current page…'
                   : item.toolName === 'get_all_tabs'     ? 'Reading all open tabs…'
                   : item.toolName === 'save_note'        ? `Saving "${item.toolInput?.filename}"`
                   : item.toolName === 'open_url'         ? `Opening ${item.toolInput?.url}`
+                  : item.toolName === 'extractTable'     ? 'Extracting tables from page…'
+                  : item.toolName === 'extractEntities'  ? 'Extracting entities from page…'
+                  : item.toolName === 'generateReport'   ? `Generating: "${item.toolInput?.title}"`
+                  : item.toolName === 'exportCSV'        ? `Exporting CSV: "${item.toolInput?.filename}"`
+                  : item.toolName === 'exportPDF'        ? 'Exporting page as PDF…'
                   : `Fetching ${item.toolInput?.url || ''}`
-      const st = item.status || 'running'
-      const badge = st === 'running' ? '<span class="spinner"></span> Working…' : st === 'done' ? '✓ Done' : '✗ Error'
+      const st    = item.status || 'running'
+      const badge = st === 'running' ? '<span class="spinner"></span> Working…'
+                  : st === 'done'    ? '✓ Done' : '✗ Error'
       return `<div class="card-tool ${st}">
         <span class="ct-icon">${icon}</span>
         <div class="ct-body">
@@ -427,7 +527,6 @@ function addCard(item) {
   c.items.push(item)
   const thread = $('aiThread')
   thread.appendChild(buildCard(item))
-  // Show overlay if hidden
   aiOverlay.style.display = 'flex'
   scheduleBoundsUpdate()
   scrollThread()
@@ -447,15 +546,21 @@ function handleAgentEvent(ev) {
   if (ev.sessionId !== activeTabId) return
 
   switch (ev.type) {
+    case 'plan':
+      addCard({ id: `plan-${Date.now()}`, type: 'plan', title: ev.title, steps: ev.steps })
+      break
+
     case 'tool_call': {
-      const item = { id: `tc-${ev.toolId}`, type: 'tool_call', toolName: ev.toolName, toolInput: ev.toolInput, status: 'running' }
+      const item = { id: `tc-${ev.toolId}`, type: 'tool_call',
+        toolName: ev.toolName, toolInput: ev.toolInput, status: 'running' }
       toolMap[ev.toolId] = item.id
       curTextId = null
       addCard(item)
       break
     }
+
     case 'tool_result': {
-      const id = toolMap[ev.toolId]
+      const id   = toolMap[ev.toolId]
       const item = convo().items.find(i => i.id === id)
       if (item) {
         item.status = 'done'
@@ -465,6 +570,7 @@ function handleAgentEvent(ev) {
       }
       break
     }
+
     case 'text': {
       if (curTextId) {
         const item = convo().items.find(i => i.id === curTextId)
@@ -475,9 +581,11 @@ function handleAgentEvent(ev) {
       addCard(item)
       break
     }
+
     case 'error':
       addCard({ id: `err-${Date.now()}`, type: 'error', text: ev.text })
       finishRun(); break
+
     case 'done':
       curTextId = null
       addCard({ id: `fb-${Date.now()}`, type: 'feedback' })
@@ -487,7 +595,7 @@ function handleAgentEvent(ev) {
 
 function finishRun() {
   isRunning = false
-  $('aiSend').disabled = false
+  $('aiSend').disabled  = false
   $('aiInput').disabled = false
 }
 
@@ -500,18 +608,15 @@ async function sendMessage(prefill) {
   if (!text) return
   if (!prefill) { inputEl.value = ''; resizeAiInput() }
 
-  if (!convos[activeTabId]) return
+  if (!convos[activeTabId]) convos[activeTabId] = { items: [] }
 
   isRunning = true
-  $('aiSend').disabled = true
+  $('aiSend').disabled  = true
   $('aiInput').disabled = true
 
-  // Update session tab label
   $('sessionTab').textContent = text.slice(0, 30) + (text.length > 30 ? '…' : '')
-
   addCard({ id: `u-${Date.now()}`, type: 'user', text })
 
-  // History is managed server-side per sessionId
   api.agent.run({ message: text, sessionId: activeTabId })
 }
 
