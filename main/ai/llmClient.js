@@ -66,7 +66,20 @@ async function runAgentLoop({ event, sessionId, message, history, systemPrompt, 
           toolId: tb.id, toolName: tb.name, result,
         })
 
-        toolResults.push({ type: 'tool_result', tool_use_id: tb.id, content: result })
+        // If tool returned an image (screenshot), send as vision block to the API
+        let apiContent
+        if (typeof result === 'string' && result.startsWith('data:image/')) {
+          const isJpeg = result.startsWith('data:image/jpeg;base64,')
+          const prefix = isJpeg ? 'data:image/jpeg;base64,' : 'data:image/png;base64,'
+          apiContent = [{
+            type: 'image',
+            source: { type: 'base64', media_type: isJpeg ? 'image/jpeg' : 'image/png', data: result.slice(prefix.length) },
+          }]
+        } else {
+          apiContent = result
+        }
+
+        toolResults.push({ type: 'tool_result', tool_use_id: tb.id, content: apiContent })
       }
 
       messages.push({ role: 'assistant', content: response.content })

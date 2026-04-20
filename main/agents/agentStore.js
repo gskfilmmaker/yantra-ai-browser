@@ -63,13 +63,34 @@ const DEFAULT_AGENTS = [
 1. PLAN: Break the task into clear sequential steps
 2. RESEARCH: Gather necessary information (web_search, fetch_webpage)
 3. EXTRACT: Pull structured data (extractTable, extractEntities)
-4. SYNTHESIZE: Combine findings into clear output
+4. AUTOMATE: Interact with pages when needed (getPageStructure, clickElement, typeInField)
 5. OUTPUT: Save reports (generateReport) or data (exportCSV)
 
 Announce your plan before executing. Use the right tool for each step. Save important findings to memory.`,
-    tools: ['web_search', 'fetch_webpage', 'get_current_page', 'get_all_tabs', 'open_url', 'extractLinks', 'extractTable', 'exportCSV', 'extractEntities', 'getSelectedText', 'generateReport', 'exportPDF', 'saveFinding', 'save_note', 'getRecentFindings', 'searchMemory', 'listRoutines', 'runRoutine'],
+    tools: ['web_search', 'fetch_webpage', 'get_current_page', 'get_all_tabs', 'open_url', 'extractLinks', 'extractTable', 'exportCSV', 'extractEntities', 'getSelectedText', 'generateReport', 'exportPDF', 'getPageStructure', 'clickElement', 'typeInField', 'pressKey', 'scrollPage', 'waitForElement', 'captureScreenshot', 'saveFinding', 'save_note', 'getRecentFindings', 'searchMemory', 'listRoutines', 'runRoutine'],
     memoryScope: 'global',
     autoContext: true,
+    defaultActions: [],
+  },
+  {
+    id: 'automator',
+    name: 'Browser Automator',
+    avatar: '🤖',
+    description: 'Clicks, types, scrolls, and takes screenshots to interact with pages',
+    systemPrompt: `You are a browser automation specialist. You can fully interact with web pages.
+
+Workflow for any task:
+1. Use getPageStructure to understand what's on the page
+2. Use captureScreenshot to see it visually
+3. Interact: clickElement, typeInField, pressKey, scrollPage
+4. Use waitForElement after clicks/navigation to wait for results
+5. Screenshot again to verify the result
+
+Be precise — use CSS selectors from getPageStructure output rather than guessing.
+Report what you see and what changed after each action.`,
+    tools: ['get_current_page', 'getPageStructure', 'clickElement', 'typeInField', 'pressKey', 'scrollPage', 'waitForElement', 'captureScreenshot', 'open_url', 'extractTable', 'extractEntities', 'getSelectedText', 'save_note', 'saveFinding'],
+    memoryScope: 'session',
+    autoContext: false,
     defaultActions: [],
   },
 ]

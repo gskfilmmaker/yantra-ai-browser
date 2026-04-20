@@ -473,30 +473,43 @@ function cardHTML(item) {
         open_url: '🔗', get_all_tabs: '📑', save_note: '💾',
         extractTable: '📊', exportCSV: '📁', extractEntities: '🏷️',
         generateReport: '📝', exportPDF: '🖨️', getSelectedText: '✂️',
+        getPageStructure: '🗺️', clickElement: '👆', typeInField: '⌨️',
+        pressKey: '⌨️', scrollPage: '📜', waitForElement: '⏳',
+        captureScreenshot: '📸',
       }
       const icon  = icons[item.toolName] || '⚙️'
-      const title = item.toolName === 'web_search'       ? `Searching: "${item.toolInput?.query}"`
-                  : item.toolName === 'get_current_page' ? 'Reading current page…'
-                  : item.toolName === 'get_all_tabs'     ? 'Reading all open tabs…'
-                  : item.toolName === 'save_note'        ? `Saving "${item.toolInput?.filename}"`
-                  : item.toolName === 'open_url'         ? `Opening ${item.toolInput?.url}`
-                  : item.toolName === 'extractTable'     ? 'Extracting tables from page…'
-                  : item.toolName === 'extractEntities'  ? 'Extracting entities from page…'
-                  : item.toolName === 'generateReport'   ? `Generating: "${item.toolInput?.title}"`
-                  : item.toolName === 'exportCSV'        ? `Exporting CSV: "${item.toolInput?.filename}"`
-                  : item.toolName === 'exportPDF'        ? 'Exporting page as PDF…'
+      const title = item.toolName === 'web_search'        ? `Searching: "${item.toolInput?.query}"`
+                  : item.toolName === 'get_current_page'  ? 'Reading current page…'
+                  : item.toolName === 'get_all_tabs'      ? 'Reading all open tabs…'
+                  : item.toolName === 'save_note'         ? `Saving "${item.toolInput?.filename}"`
+                  : item.toolName === 'open_url'          ? `Opening ${item.toolInput?.url}`
+                  : item.toolName === 'extractTable'      ? 'Extracting tables from page…'
+                  : item.toolName === 'extractEntities'   ? 'Extracting entities from page…'
+                  : item.toolName === 'generateReport'    ? `Generating: "${item.toolInput?.title}"`
+                  : item.toolName === 'exportCSV'         ? `Exporting CSV: "${item.toolInput?.filename}"`
+                  : item.toolName === 'exportPDF'         ? 'Exporting page as PDF…'
+                  : item.toolName === 'getPageStructure'  ? 'Mapping interactive elements…'
+                  : item.toolName === 'clickElement'      ? `Clicking: "${item.toolInput?.text || item.toolInput?.selector}"`
+                  : item.toolName === 'typeInField'       ? `Typing into field…`
+                  : item.toolName === 'pressKey'          ? `Pressing ${item.toolInput?.key}`
+                  : item.toolName === 'scrollPage'        ? `Scrolling ${item.toolInput?.direction}…`
+                  : item.toolName === 'waitForElement'    ? `Waiting for "${item.toolInput?.selector}"…`
+                  : item.toolName === 'captureScreenshot' ? 'Taking screenshot…'
                   : `Fetching ${item.toolInput?.url || ''}`
       const st    = item.status || 'running'
       const badge = st === 'running' ? '<span class="spinner"></span> Working…'
                   : st === 'done'    ? '✓ Done' : '✗ Error'
+      const screenshotHtml = item.screenshot
+        ? `<img class="card-screenshot" src="${item.screenshot}" alt="Screenshot">`
+        : ''
       return `<div class="card-tool ${st}">
         <span class="ct-icon">${icon}</span>
         <div class="ct-body">
           <div class="ct-title">${esc(title)}</div>
-          ${item.summary ? `<div class="ct-sub">${esc(item.summary)}</div>` : ''}
+          ${item.summary && !item.screenshot ? `<div class="ct-sub">${esc(item.summary)}</div>` : ''}
         </div>
         <div class="ct-badge ${st}">${badge}</div>
-      </div>`
+      </div>${screenshotHtml}`
     }
 
     case 'feedback':
@@ -564,8 +577,13 @@ function handleAgentEvent(ev) {
       const item = convo().items.find(i => i.id === id)
       if (item) {
         item.status = 'done'
-        const line = ev.result.split('\n').find(l => l.trim()) || ''
-        item.summary = line.slice(0, 100) + (line.length > 100 ? '…' : '')
+        if (ev.result && ev.result.startsWith('data:image/')) {
+          item.screenshot = ev.result
+          item.summary    = 'Screenshot captured'
+        } else {
+          const line = (ev.result || '').split('\n').find(l => l.trim()) || ''
+          item.summary = line.slice(0, 100) + (line.length > 100 ? '…' : '')
+        }
         patchCard(id); scrollThread()
       }
       break
