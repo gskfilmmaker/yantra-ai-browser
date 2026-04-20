@@ -432,6 +432,157 @@ kbd { background: #F0F0F0; border: 1px solid #D0D0D0; border-radius: 4px; paddin
   box-shadow: 0 -2px 6px rgba(0,0,0,.04);
 }
 
+/* ─── Routines panel ─────────────────────────────────────────── */
+.rp-overlay {
+  position: fixed; inset: 0; z-index: 900;
+  background: rgba(0,0,0,.25);
+  display: flex; justify-content: flex-end;
+  backdrop-filter: blur(2px);
+  animation: fade-in .15s ease;
+}
+.rp-overlay[hidden] { display: none; }
+
+.rp-panel {
+  width: 360px; height: 100%; display: flex; flex-direction: column;
+  background: #fff; box-shadow: -8px 0 30px rgba(0,0,0,.14);
+  animation: slide-in-right .2s cubic-bezier(.34,1.06,.64,1);
+}
+@keyframes slide-in-right {
+  from { transform: translateX(40px); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+.rp-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid #F0F0F0;
+  flex-shrink: 0;
+}
+.rp-title     { font-size: 15px; font-weight: 700; flex: 1; }
+.rp-new-btn   {
+  background: #5B3FA6; color: #fff; border-radius: 8px;
+  padding: 6px 12px; font-size: 12px; font-weight: 600;
+  transition: opacity .12s;
+}
+.rp-new-btn:hover { opacity: .88; }
+.rp-close-btn {
+  width: 28px; height: 28px; border-radius: 7px; color: #aaa; font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .1s;
+}
+.rp-close-btn:hover { background: #F5F5F5; color: #333; }
+
+.rp-list { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+
+.rp-item {
+  border: 1px solid #EFEFEF; border-radius: 12px;
+  padding: 12px 14px; transition: border-color .1s;
+}
+.rp-item:hover { border-color: #DDD; }
+.rp-item-main { display: flex; align-items: center; gap: 10px; }
+.rp-item-info { flex: 1; min-width: 0; }
+.rp-item-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rp-item-meta { font-size: 11px; color: #999; margin-top: 1px; }
+.rp-item-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+.rp-run-btn, .rp-edit-btn, .rp-del-btn {
+  width: 28px; height: 28px; border-radius: 7px; font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  color: #888; transition: background .1s, color .1s;
+}
+.rp-run-btn:hover  { background: #F0FDF4; color: #15803D; }
+.rp-edit-btn:hover { background: #F5F5F5; color: #333; }
+.rp-del-btn:hover  { background: #FFF1F2; color: #BE123C; }
+.rp-run-btn:disabled { opacity: .4; cursor: default; }
+
+/* Toggle switch */
+.rp-toggle { position: relative; display: inline-block; flex-shrink: 0; cursor: pointer; }
+.rp-toggle-cb { position: absolute; opacity: 0; width: 0; height: 0; }
+.rp-toggle-track {
+  display: block; width: 32px; height: 18px;
+  background: #D0D0D0; border-radius: 99px;
+  transition: background .2s;
+  position: relative;
+}
+.rp-toggle-track::after {
+  content: ''; position: absolute;
+  width: 14px; height: 14px; top: 2px; left: 2px;
+  background: #fff; border-radius: 50%;
+  transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.rp-toggle-cb:checked + .rp-toggle-track { background: #5B3FA6; }
+.rp-toggle-cb:checked + .rp-toggle-track::after { transform: translateX(14px); }
+
+/* Empty state */
+.rp-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; padding: 40px 24px; text-align: center;
+}
+.rp-empty[hidden] { display: none; }
+.rp-empty-icon  { font-size: 36px; opacity: .4; }
+.rp-empty-title { font-size: 14px; font-weight: 600; color: #333; }
+.rp-empty-sub   { font-size: 12px; color: #999; line-height: 1.5; }
+.rp-empty-btn   {
+  margin-top: 6px; background: #5B3FA6; color: #fff;
+  border-radius: 8px; padding: 8px 18px; font-size: 13px; font-weight: 600;
+  transition: opacity .12s;
+}
+.rp-empty-btn:hover { opacity: .88; }
+
+/* Routine action builder */
+.rt-action-row {
+  border: 1px solid #EFEFEF; border-radius: 10px;
+  padding: 10px 12px; margin-bottom: 8px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.rt-action-top {
+  display: flex; gap: 8px; align-items: center;
+}
+.rt-tool-select { flex: 1; }
+.rt-action-del-btn {
+  width: 28px; height: 28px; border-radius: 7px;
+  color: #aaa; font-size: 16px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .1s, color .1s;
+}
+.rt-action-del-btn:hover { background: #FFF1F2; color: #BE123C; }
+.rt-action-params { display: flex; flex-direction: column; gap: 6px; }
+.rt-param-row { display: flex; flex-direction: column; gap: 3px; }
+.rt-param-label { font-size: 11px; font-weight: 600; color: #888; }
+.rt-no-params { font-size: 12px; color: #bbb; font-style: italic; }
+
+.rt-add-action-btn {
+  width: 100%; padding: 8px; border-radius: 8px;
+  border: 1.5px dashed #D0D0D0; color: #888; font-size: 13px; font-weight: 500;
+  transition: border-color .1s, color .1s;
+}
+.rt-add-action-btn:hover { border-color: #7C5CD4; color: #5B3FA6; }
+
+.field-hint-inline { font-size: 11px; color: #aaa; font-weight: 400; }
+.modal-lg { width: 560px; }
+
+/* ─── Settings modal ─────────────────────────────────────────── */
+.api-key-wrap { display: flex; gap: 8px; align-items: center; }
+.api-key-wrap .field-input { flex: 1; font-family: 'SF Mono',Consolas,monospace; font-size: 13px; letter-spacing: .03em; }
+.api-key-toggle {
+  flex-shrink: 0; padding: 0 14px; height: 38px; border-radius: 8px;
+  border: 1.5px solid #E0E0E0; color: #555; font-size: 12px; font-weight: 600;
+  transition: background .1s;
+}
+.api-key-toggle:hover { background: #F5F5F5; }
+
+.field-hint { font-size: 11px; color: #aaa; margin-top: 4px; }
+
+.settings-sep { height: 1px; background: #F0F0F0; margin: 4px 0; }
+.settings-section-title { font-size: 12px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+.settings-actions-row { display: flex; gap: 8px; }
+.settings-danger-btn {
+  flex: 1; padding: 9px; border-radius: 8px;
+  border: 1.5px solid #FECDD3; background: #FFF1F2; color: #BE123C;
+  font-size: 12px; font-weight: 600; transition: background .1s;
+}
+.settings-danger-btn:hover { background: #FFE4E6; }
+
 /* ─── Agent creation modal ───────────────────────────────────── */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 1000;

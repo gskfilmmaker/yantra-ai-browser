@@ -244,6 +244,267 @@ agentSel?.addEventListener('click', async (e) => {
 
 document.addEventListener('click', () => { if (agentPicker) agentPicker.hidden = true })
 
+// ─── Routines panel ───────────────────────────────────────────────────────────
+
+const ROUTINE_TOOLS = [
+  { name: 'get_current_page',  label: 'Read current page',  params: [] },
+  { name: 'web_search',        label: 'Web search',         params: [{ key: 'query', label: 'Query', type: 'text' }] },
+  { name: 'fetch_webpage',     label: 'Fetch webpage',      params: [{ key: 'url',   label: 'URL',   type: 'text' }] },
+  { name: 'extractTable',      label: 'Extract tables',     params: [] },
+  { name: 'extractEntities',   label: 'Extract entities',   params: [] },
+  { name: 'captureScreenshot', label: 'Screenshot',         params: [] },
+  { name: 'getPageStructure',  label: 'Map page elements',  params: [] },
+  { name: 'save_note',         label: 'Save note',          params: [{ key: 'filename', label: 'Filename', type: 'text' }] },
+  { name: 'saveFinding',       label: 'Save finding',       params: [{ key: 'title',    label: 'Title',    type: 'text' }] },
+  { name: 'generateReport',    label: 'Generate report',    params: [{ key: 'title',    label: 'Title',    type: 'text' }, { key: 'content', label: 'Content template', type: 'textarea' }] },
+  { name: 'exportCSV',         label: 'Export CSV',         params: [{ key: 'filename', label: 'Filename', type: 'text' }] },
+  { name: 'exportPDF',         label: 'Export PDF',         params: [{ key: 'filename', label: 'Filename', type: 'text' }] },
+]
+
+let _editingRoutineId = null
+
+async function openRoutinesPanel() {
+  $('rpOverlay').hidden = false
+  await refreshRoutinesList()
+}
+
+function closeRoutinesPanel() { $('rpOverlay').hidden = true }
+
+async function refreshRoutinesList() {
+  const routines = await strawberry.routines.list()
+  const list  = $('rpList')
+  const empty = $('rpEmpty')
+
+  if (!routines.length) {
+    list.innerHTML = ''
+    empty.hidden = false
+    return
+  }
+
+  empty.hidden = true
+  list.innerHTML = routines.map(r => {
+    const triggerLabel = r.trigger?.type === 'page_load'   ? `🔗 Page load${r.trigger.urlPattern ? ` · ${r.trigger.urlPattern}` : ''}`
+                       : r.trigger?.type === 'tab_changed' ? `🔀 Tab changed`
+                       : '▶ Manual'
+    return `
+      <div class="rp-item" data-id="${esc(r.id)}">
+        <div class="rp-item-main">
+          <label class="rp-toggle" title="${r.enabled ? 'Enabled' : 'Disabled'}">
+            <input type="checkbox" class="rp-toggle-cb" data-id="${esc(r.id)}" ${r.enabled ? 'checked' : ''}>
+            <span class="rp-toggle-track"></span>
+          </label>
+          <div class="rp-item-info">
+            <div class="rp-item-name">${esc(r.name)}</div>
+            <div class="rp-item-meta">${triggerLabel} · ${r.actions?.length || 0} action${r.actions?.length !== 1 ? 's' : ''}</div>
+          </div>
+          <div class="rp-item-actions">
+            <button class="rp-run-btn"  data-id="${esc(r.id)}" title="Run now">▶</button>
+            <button class="rp-edit-btn" data-id="${esc(r.id)}" title="Edit">✎</button>
+            <button class="rp-del-btn"  data-id="${esc(r.id)}" title="Delete">×</button>
+          </div>
+        </div>
+      </div>
+    `
+  }).join('')
+
+  // Wire up toggle checkboxes
+  list.querySelectorAll('.rp-toggle-cb').forEach(cb => {
+    cb.addEventListener('change', async () => {
+      await strawberry.routines.update(cb.dataset.id, { enabled: cb.checked })
+    })
+  })
+
+  // Wire up action buttons
+  list.querySelectorAll('.rp-run-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      btn.textContent = '…'
+      btn.disabled = true
+      await strawberry.routines.run(btn.dataset.id)
+      btn.textContent = '▶'
+      btn.disabled = false
+    })
+  })
+
+  list.querySelectorAll('.rp-edit-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const routines = await strawberry.routines.list()
+      const routine  = routines.find(r => r.id === btn.dataset.id)
+      if (routine) openRoutineModal(routine)
+    })
+  })
+
+  list.querySelectorAll('.rp-del-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm(`Delete routine?`)) return
+      await strawberry.routines.remove(btn.dataset.id)
+      await refreshRoutinesList()
+    })
+  })
+}
+
+// ── Routine form ──────────────────────────────────────────────────────────────
+
+function openRoutineModal(routine) {
+  _editingRoutineId = routine?.id || null
+  $('routineModalTitle').textContent = routine ? 'Edit Routine' : 'New Routine'
+  $('rtName').value        = routine?.name || ''
+  $('rtTrigger').value     = routine?.trigger?.type || 'manual'
+  $('rtUrlPattern').value  = routine?.trigger?.urlPattern || ''
+  $('rtActionsList').innerHTML = ''
+  updateUrlPatternVisibility()
+
+  const actions = routine?.actions || []
+  if (actions.length) {
+    actions.forEach(a => addActionRow(a.tool, a.params))
+  } else {
+    addActionRow()
+  }
+
+  $('routineModal').hidden = false
+}
+
+function closeRoutineModal() { $('routineModal').hidden = true }
+
+function updateUrlPatternVisibility() {
+  const t = $('rtTrigger').value
+  $('rtUrlPatternWrap').style.display = t !== 'manual' ? '' : 'none'
+}
+
+$('rtTrigger').addEventListener('change', updateUrlPatternVisibility)
+
+function buildToolOptions(selected) {
+  return ROUTINE_TOOLS.map(t =>
+    `<option value="${esc(t.name)}"${t.name === selected ? ' selected' : ''}>${esc(t.label)}</option>`
+  ).join('')
+}
+
+function buildParamFields(toolName, existingParams = {}) {
+  const def = ROUTINE_TOOLS.find(t => t.name === toolName)
+  if (!def || !def.params.length) return '<div class="rt-no-params">No parameters needed</div>'
+  return def.params.map(p => `
+    <div class="rt-param-row">
+      <label class="rt-param-label">${esc(p.label)}</label>
+      ${p.type === 'textarea'
+        ? `<textarea class="field-input rt-param-val" data-key="${esc(p.key)}" rows="2">${esc(existingParams[p.key] || '')}</textarea>`
+        : `<input class="field-input rt-param-val" data-key="${esc(p.key)}" type="text" value="${esc(existingParams[p.key] || '')}">`
+      }
+    </div>
+  `).join('')
+}
+
+function addActionRow(toolName, existingParams = {}) {
+  const defaultTool = toolName || ROUTINE_TOOLS[0].name
+  const row = document.createElement('div')
+  row.className = 'rt-action-row'
+  row.innerHTML = `
+    <div class="rt-action-top">
+      <select class="field-select rt-tool-select">${buildToolOptions(defaultTool)}</select>
+      <button class="rt-action-del-btn" title="Remove">×</button>
+    </div>
+    <div class="rt-action-params">${buildParamFields(defaultTool, existingParams)}</div>
+  `
+
+  row.querySelector('.rt-tool-select').addEventListener('change', e => {
+    row.querySelector('.rt-action-params').innerHTML = buildParamFields(e.target.value, {})
+  })
+
+  row.querySelector('.rt-action-del-btn').addEventListener('click', () => {
+    row.remove()
+  })
+
+  $('rtActionsList').appendChild(row)
+}
+
+function collectActions() {
+  return Array.from($('rtActionsList').querySelectorAll('.rt-action-row')).map(row => {
+    const tool   = row.querySelector('.rt-tool-select').value
+    const params = {}
+    row.querySelectorAll('.rt-param-val').forEach(inp => {
+      if (inp.value.trim()) params[inp.dataset.key] = inp.value.trim()
+    })
+    return { tool, params }
+  })
+}
+
+$('rtAddAction').addEventListener('click', () => addActionRow())
+
+$('routineModalClose').addEventListener('click',  closeRoutineModal)
+$('routineModalCancel').addEventListener('click', closeRoutineModal)
+$('routineModal').addEventListener('click', e => { if (e.target === $('routineModal')) closeRoutineModal() })
+
+$('routineModalSave').addEventListener('click', async () => {
+  const name = $('rtName').value.trim()
+  if (!name) { $('rtName').focus(); return }
+
+  const cfg = {
+    name,
+    trigger: {
+      type: $('rtTrigger').value,
+      ...($('rtTrigger').value !== 'manual' && $('rtUrlPattern').value.trim()
+        ? { urlPattern: $('rtUrlPattern').value.trim() } : {}),
+    },
+    actions: collectActions(),
+  }
+
+  if (_editingRoutineId) {
+    await strawberry.routines.update(_editingRoutineId, cfg)
+  } else {
+    await strawberry.routines.create(cfg)
+  }
+
+  closeRoutineModal()
+  await refreshRoutinesList()
+  addCard({ id: `rt-saved-${Date.now()}`, type: 'text',
+    text: `${_editingRoutineId ? 'Updated' : 'Created'} routine **${name}**` })
+})
+
+$('sbRoutines').addEventListener('click', openRoutinesPanel)
+$('rpCloseBtn').addEventListener('click', closeRoutinesPanel)
+$('rpNewBtn').addEventListener('click',   () => openRoutineModal())
+$('rpEmptyNew').addEventListener('click', () => openRoutineModal())
+$('rpOverlay').addEventListener('click',  e => { if (e.target === $('rpOverlay')) closeRoutinesPanel() })
+
+// ─── Settings modal ───────────────────────────────────────────────────────────
+
+async function openSettingsModal() {
+  const s = await strawberry.settings.get()
+  $('settingsApiKey').value = s.apiKey || ''
+  $('settingsModal').hidden = false
+}
+
+function closeSettingsModal() { $('settingsModal').hidden = true }
+
+$('sbSettings').addEventListener('click',        openSettingsModal)
+$('settingsModalClose').addEventListener('click',  closeSettingsModal)
+$('settingsModalCancel').addEventListener('click', closeSettingsModal)
+$('settingsModal').addEventListener('click', e => { if (e.target === $('settingsModal')) closeSettingsModal() })
+
+$('apiKeyToggle').addEventListener('click', () => {
+  const inp = $('settingsApiKey')
+  const show = inp.type === 'password'
+  inp.type = show ? 'text' : 'password'
+  $('apiKeyToggle').textContent = show ? 'Hide' : 'Show'
+})
+
+$('settingsModalSave').addEventListener('click', async () => {
+  const key = $('settingsApiKey').value.trim()
+  if (key) await strawberry.settings.set('apiKey', key)
+  closeSettingsModal()
+  addCard({ id: `settings-saved-${Date.now()}`, type: 'text', text: '✓ Settings saved.' })
+})
+
+$('settingsClearMemory').addEventListener('click', async () => {
+  if (!confirm('Clear all saved memory? This cannot be undone.')) return
+  await strawberry.memory.clear()
+  addCard({ id: `cleared-mem-${Date.now()}`, type: 'text', text: 'Memory cleared.' })
+})
+
+$('settingsClearHistory').addEventListener('click', async () => {
+  if (!confirm('Clear all chat history? This cannot be undone.')) return
+  await strawberry.sessions.clear()
+  addCard({ id: `cleared-hist-${Date.now()}`, type: 'text', text: 'Chat history cleared.' })
+})
+
 // ─── Agent creation modal ─────────────────────────────────────────────────────
 
 const agentModal = $('agentModal')

@@ -64,13 +64,16 @@
       <button class="sb-btn" id="sbNew" title="New tab">
         <svg width="15" height="15" viewBox="0 0 15 15"><path d="M7.5 2v11M2 7.5h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       </button>
-      <button class="sb-btn" title="Share">
-        <svg width="15" height="15" viewBox="0 0 15 15"><path d="M7.5 2v9M4 5l3.5-3L11 5M3 10v3h9v-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+      <button class="sb-btn" id="sbRoutines" title="Routines">
+        <svg width="15" height="15" viewBox="0 0 15 15"><path d="M7.5 1.5l1.3 3.9h4.1l-3.3 2.4 1.3 3.9-3.4-2.4-3.4 2.4 1.3-3.9L2.1 5.4h4.1z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" fill="none"/></svg>
       </button>
       <button class="sb-btn" id="sbHistory" title="History">
         <svg width="15" height="15" viewBox="0 0 15 15"><circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M7.5 4.5V8l2 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
       </button>
       <div class="sb-spacer"></div>
+      <button class="sb-btn" id="sbSettings" title="Settings">
+        <svg width="15" height="15" viewBox="0 0 15 15"><circle cx="7.5" cy="7.5" r="2" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M7.5 1v1.5M7.5 12.5V14M1 7.5h1.5M12.5 7.5H14M2.7 2.7l1 1M11.3 11.3l1 1M11.3 2.7l-1 1M3.7 11.3l-1 1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      </button>
       <button class="sb-avatar" id="sbAvatar" title="Create agent">+</button>
     </div>
 
@@ -138,6 +141,93 @@
         <!-- Session label tab -->
         <div class="session-tab" id="sessionTab">Strawberry</div>
 
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Routines panel ───────────────────────────────────────── -->
+  <div class="rp-overlay" id="rpOverlay" hidden>
+    <div class="rp-panel">
+      <div class="rp-header">
+        <span class="rp-title">⚡ Routines</span>
+        <button class="rp-new-btn" id="rpNewBtn">+ New</button>
+        <button class="rp-close-btn" id="rpCloseBtn">×</button>
+      </div>
+      <div class="rp-list" id="rpList"></div>
+      <div class="rp-empty" id="rpEmpty" hidden>
+        <div class="rp-empty-icon">⚡</div>
+        <div class="rp-empty-title">No routines yet</div>
+        <div class="rp-empty-sub">Create automations that run on page load or manually on demand.</div>
+        <button class="rp-empty-btn" id="rpEmptyNew">Create first routine</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Routine form modal ────────────────────────────────────── -->
+  <div class="modal-overlay" id="routineModal" hidden>
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <span class="modal-title" id="routineModalTitle">New Routine</span>
+        <button class="modal-close" id="routineModalClose">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-field">
+          <label class="field-label">Name</label>
+          <input id="rtName" class="field-input" placeholder="e.g. Daily research summary">
+        </div>
+        <div class="modal-row">
+          <div class="modal-field" style="flex:1">
+            <label class="field-label">Trigger</label>
+            <select id="rtTrigger" class="field-select">
+              <option value="manual">Manual — run on demand</option>
+              <option value="page_load">Page Load — when a URL loads</option>
+              <option value="tab_changed">Tab Changed — when switching tabs</option>
+            </select>
+          </div>
+          <div class="modal-field" id="rtUrlPatternWrap" style="flex:1">
+            <label class="field-label">URL Pattern (regex, optional)</label>
+            <input id="rtUrlPattern" class="field-input" placeholder="e.g. github\.com">
+          </div>
+        </div>
+        <div class="modal-field">
+          <label class="field-label">Actions <span class="field-hint-inline">(run in order)</span></label>
+          <div id="rtActionsList"></div>
+          <button class="rt-add-action-btn" id="rtAddAction">+ Add Action</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn modal-cancel" id="routineModalCancel">Cancel</button>
+        <button class="modal-btn modal-save"   id="routineModalSave">Save Routine</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Settings modal ────────────────────────────────────────── -->
+  <div class="modal-overlay" id="settingsModal" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Settings</span>
+        <button class="modal-close" id="settingsModalClose">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-field">
+          <label class="field-label">Anthropic API Key</label>
+          <div class="api-key-wrap">
+            <input id="settingsApiKey" class="field-input" type="password" placeholder="sk-ant-…" autocomplete="off">
+            <button class="api-key-toggle" id="apiKeyToggle">Show</button>
+          </div>
+          <div class="field-hint">Stored locally in ~/.strawberry/settings.json</div>
+        </div>
+        <div class="settings-sep"></div>
+        <div class="settings-section-title">Data</div>
+        <div class="settings-actions-row">
+          <button class="settings-danger-btn" id="settingsClearMemory">Clear Memory</button>
+          <button class="settings-danger-btn" id="settingsClearHistory">Clear Chat History</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn modal-cancel" id="settingsModalCancel">Cancel</button>
+        <button class="modal-btn modal-save"   id="settingsModalSave">Save</button>
       </div>
     </div>
   </div>

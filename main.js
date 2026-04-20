@@ -4,6 +4,13 @@ const path = require('path')
 const tabManager    = require('./main/tabManager')
 const { register: registerIPC } = require('./main/ipcHandlers')
 const triggerEngine = require('./main/routines/triggerEngine')
+const settings      = require('./main/settings')
+
+// Load saved API key if not set in environment
+if (!process.env.ANTHROPIC_API_KEY) {
+  const saved = settings.get('apiKey')
+  if (saved) process.env.ANTHROPIC_API_KEY = saved
+}
 
 let mainWindow
 

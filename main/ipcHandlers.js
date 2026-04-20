@@ -12,6 +12,7 @@ const llmClient      = require('./ai/llmClient')
 const planner        = require('./ai/planner')
 const registry       = require('./tools/registry')
 const routineManager = require('./routines/routineManager')
+const appSettings    = require('./settings')
 
 // ── Eager-load all tool modules so they register themselves ──────────────────
 require('./tools/browserTools')
@@ -87,6 +88,24 @@ function register() {
   ipcMain.handle('routine:update', (_, id, p) => routineManager.updateRoutine(id, p))
   ipcMain.handle('routine:delete', (_, id)    => routineManager.deleteRoutine(id))
   ipcMain.handle('routine:run',    (_, id)    => routineManager.runRoutine(id))
+
+  // ── Settings ─────────────────────────────────────────────────────────────────
+  ipcMain.handle('settings:get', ()        => appSettings.getAll())
+  ipcMain.handle('settings:set', (_, k, v) => {
+    appSettings.set(k, v)
+    // Hot-reload API key without restart
+    if (k === 'apiKey' && v) process.env.ANTHROPIC_API_KEY = v
+  })
+
+  // ── Data management ──────────────────────────────────────────────────────────
+  ipcMain.handle('memory:clear', () => {
+    const file = path.join(os.homedir(), '.strawberry', 'memory.json')
+    try { fs.writeFileSync(file, '[]') } catch { /* ignore */ }
+  })
+  ipcMain.handle('sessions:clear', () => {
+    sessionHistory.clear()
+    saveSessions()
+  })
 
   // ── Agent run ───────────────────────────────────────────────────────────────
   ipcMain.handle('agent:run', async (event, { message, sessionId }) => {
