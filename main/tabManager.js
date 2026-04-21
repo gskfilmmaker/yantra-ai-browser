@@ -69,7 +69,9 @@ class TabManager {
 
     this.activeTabId = tabId
 
-    if (tab.type === 'browser' && tab.view) {
+    // Only attach BrowserView when a URL is actually loaded — an empty BrowserView
+    // is a transparent native layer that intercepts mouse events and blocks HTML modals
+    if (tab.type === 'browser' && tab.view && tab.url) {
       this._win.addBrowserView(tab.view)
       tab.view.setBounds(this._bounds)
     }
@@ -104,8 +106,28 @@ class TabManager {
   navigate(url) {
     const tab = this._activeTab()
     if (tab?.type !== 'browser') return false
-    tab.view.webContents.loadURL(this._normalise(url))
+    const normalUrl = this._normalise(url)
+    tab.view.webContents.loadURL(normalUrl)
+    tab.url = normalUrl
+    // Attach BrowserView now that we have a URL
+    if (!this._win.getBrowserViews().includes(tab.view)) {
+      this._win.addBrowserView(tab.view)
+    }
+    tab.view.setBounds(this._bounds)
     return true
+  }
+
+  hideBrowserView() {
+    for (const v of this._win?.getBrowserViews() || []) {
+      v.setBounds({ x: 0, y: 0, width: 0, height: 0 })
+    }
+  }
+
+  showBrowserView() {
+    const tab = this._activeTab()
+    if (tab?.type === 'browser' && tab.view && tab.url) {
+      this._recalcBounds()
+    }
   }
 
   goBack() {

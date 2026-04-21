@@ -264,11 +264,12 @@ const ROUTINE_TOOLS = [
 let _editingRoutineId = null
 
 async function openRoutinesPanel() {
+  api.browser.hide()
   $('rpOverlay').hidden = false
   await refreshRoutinesList()
 }
 
-function closeRoutinesPanel() { $('rpOverlay').hidden = true }
+function closeRoutinesPanel() { $('rpOverlay').hidden = true; api.browser.show() }
 
 async function refreshRoutinesList() {
   const routines = await strawberry.routines.list()
@@ -467,6 +468,7 @@ $('rpOverlay').addEventListener('click',  e => { if (e.target === $('rpOverlay')
 // ─── Settings modal ───────────────────────────────────────────────────────────
 
 async function openSettingsModal() {
+  api.browser.hide()
   const s = await strawberry.settings.get()
   $('settingsApiKey').value    = s.apiKey             || ''
   $('settingsOpenaiKey').value = s.openaiApiKey       || ''
@@ -474,7 +476,7 @@ async function openSettingsModal() {
   $('settingsModal').hidden = false
 }
 
-function closeSettingsModal() { $('settingsModal').hidden = true }
+function closeSettingsModal() { $('settingsModal').hidden = true; api.browser.show() }
 
 $('sbSettings').addEventListener('click',        openSettingsModal)
 $('settingsModalClose').addEventListener('click',  closeSettingsModal)
@@ -520,6 +522,7 @@ $('settingsClearHistory').addEventListener('click', async () => {
 const agentModal = $('agentModal')
 
 function openAgentModal() {
+  api.browser.hide()
   $('agentAvatar').value      = '🤖'
   $('agentName').value        = ''
   $('agentDesc').value        = ''
@@ -529,7 +532,7 @@ function openAgentModal() {
   agentModal.hidden = false
 }
 
-function closeAgentModal() { agentModal.hidden = true }
+function closeAgentModal() { agentModal.hidden = true; api.browser.show() }
 
 $('agentModalClose').addEventListener('click',  closeAgentModal)
 $('agentModalCancel').addEventListener('click', closeAgentModal)
@@ -640,12 +643,13 @@ $('btnUpdateNow').addEventListener('click', () => {
 let _allMemory = []
 
 async function openMemoryPanel() {
+  api.browser.hide()
   $('memOverlay').hidden = false
   _allMemory = await strawberry.memory.getAll()
   renderMemoryList(_allMemory)
 }
 
-function closeMemoryPanel() { $('memOverlay').hidden = true }
+function closeMemoryPanel() { $('memOverlay').hidden = true; api.browser.show() }
 
 function renderMemoryList(items) {
   const list  = $('memList')

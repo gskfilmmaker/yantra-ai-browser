@@ -66,6 +66,8 @@ function register() {
   ipcMain.handle('browser:getContent',    (_, id)         => tabManager.getPageContent(id))
   ipcMain.handle('browser:getAllContent', ()              => tabManager.getAllTabsContent())
   ipcMain.handle('browser:setBounds',     (_, bounds)     => tabManager.setBrowserBounds(bounds))
+  ipcMain.handle('browser:hide',          ()              => tabManager.hideBrowserView())
+  ipcMain.handle('browser:show',          ()              => tabManager.showBrowserView())
   ipcMain.handle('browser:findInPage',    (_, text, opts) => tabManager.findInPage(text, opts))
   ipcMain.handle('browser:stopFindInPage',()              => tabManager.stopFindInPage())
 
@@ -112,8 +114,8 @@ function register() {
 
   // ── Agent run ───────────────────────────────────────────────────────────────
   ipcMain.handle('agent:run', async (event, { message, sessionId }) => {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      event.sender.send('agent-event', { sessionId, type: 'error', text: 'Set ANTHROPIC_API_KEY and restart.' })
+    if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY) {
+      event.sender.send('agent-event', { sessionId, type: 'error', text: 'Add an API key in Settings (⚙).' })
       return
     }
 

@@ -19,6 +19,8 @@ contextBridge.exposeInMainWorld('api', {
     getContent:  (id)     => ipcRenderer.invoke('browser:getContent', id),
     getAllContent: ()      => ipcRenderer.invoke('browser:getAllContent'),
     setBounds:      (bounds)      => ipcRenderer.invoke('browser:setBounds', bounds),
+    hide:           ()            => ipcRenderer.invoke('browser:hide'),
+    show:           ()            => ipcRenderer.invoke('browser:show'),
     findInPage:     (text, opts)  => ipcRenderer.invoke('browser:findInPage', text, opts),
     stopFindInPage: ()            => ipcRenderer.invoke('browser:stopFindInPage'),
   },
