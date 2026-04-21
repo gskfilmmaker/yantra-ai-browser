@@ -121,7 +121,7 @@ app.whenReady().then(() => {
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      mainWindow.show()
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show()
     }
   })
 })
