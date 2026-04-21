@@ -110,12 +110,12 @@ class TabManager {
 
   goBack() {
     const tab = this._activeTab()
-    if (tab?.view?.webContents.canGoBack()) tab.view.webContents.goBack()
+    if (tab?.view?.webContents.navigationHistory.canGoBack()) tab.view.webContents.goBack()
   }
 
   goForward() {
     const tab = this._activeTab()
-    if (tab?.view?.webContents.canGoForward()) tab.view.webContents.goForward()
+    if (tab?.view?.webContents.navigationHistory.canGoForward()) tab.view.webContents.goForward()
   }
 
   reload() {
@@ -204,8 +204,8 @@ class TabManager {
     return [...this.tabs.values()].map(t => ({
       id: t.id, type: t.type, url: t.url || '', title: t.title || 'New Tab', loading: !!t.loading,
       favicon: t.favicon || null,
-      canGoBack:    t.view?.webContents.canGoBack()    || false,
-      canGoForward: t.view?.webContents.canGoForward() || false,
+      canGoBack:    t.view?.webContents.navigationHistory.canGoBack()    || false,
+      canGoForward: t.view?.webContents.navigationHistory.canGoForward() || false,
     }))
   }
 
@@ -286,8 +286,8 @@ class TabManager {
     this._emit('tab:updated', {
       id: t.id, type: t.type, url: t.url||'', title: t.title||'', loading: !!t.loading,
       favicon: t.favicon || null,
-      canGoBack:    t.view?.webContents.canGoBack()    || false,
-      canGoForward: t.view?.webContents.canGoForward() || false,
+      canGoBack:    t.view?.webContents.navigationHistory.canGoBack()    || false,
+      canGoForward: t.view?.webContents.navigationHistory.canGoForward() || false,
     })
   }
 
