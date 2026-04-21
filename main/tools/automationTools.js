@@ -8,7 +8,7 @@ const tm = () => require('../tabManager')
 registry.register({
   name: 'getPageStructure',
   description: 'Get all interactive elements on the current page: buttons, links, inputs, forms. Always call this before clicking or typing.',
-  input_schema: { type: 'object', properties: {}, required: [] },
+  inputSchema: { type: 'object', properties: {}, required: [] },
   async execute() {
     const tab = tm().getActiveTab()
     if (!tab || tab.type !== 'browser') return 'No browser tab active.'
@@ -70,7 +70,7 @@ registry.register({
 registry.register({
   name: 'clickElement',
   description: 'Click an element on the current page by CSS selector or by its visible text.',
-  input_schema: {
+  inputSchema: {
     type: 'object',
     properties: {
       selector: { type: 'string', description: 'CSS selector of the element to click (e.g. "#submit", ".btn-primary", \'[name="q"]\')' },
@@ -117,7 +117,7 @@ registry.register({
 registry.register({
   name: 'typeInField',
   description: 'Type text into an input field or textarea on the current page.',
-  input_schema: {
+  inputSchema: {
     type: 'object',
     properties: {
       selector: { type: 'string', description: 'CSS selector of the input field. If omitted, uses the currently focused or first visible input.' },
@@ -181,7 +181,7 @@ registry.register({
 registry.register({
   name: 'pressKey',
   description: 'Press a keyboard key on the current page (dispatched to the active/focused element).',
-  input_schema: {
+  inputSchema: {
     type: 'object',
     properties: {
       key: {
@@ -210,7 +210,7 @@ registry.register({
 registry.register({
   name: 'scrollPage',
   description: 'Scroll the current page up, down, to the top, or to the bottom.',
-  input_schema: {
+  inputSchema: {
     type: 'object',
     properties: {
       direction: { type: 'string', enum: ['up', 'down', 'top', 'bottom'], description: 'Scroll direction' },
@@ -244,7 +244,7 @@ registry.register({
 registry.register({
   name: 'waitForElement',
   description: 'Wait for a CSS selector to appear on the page (up to 5 seconds). Useful after navigation or clicking.',
-  input_schema: {
+  inputSchema: {
     type: 'object',
     properties: {
       selector: { type: 'string', description: 'CSS selector to wait for' },
@@ -287,7 +287,7 @@ registry.register({
 registry.register({
   name: 'captureScreenshot',
   description: 'Take a screenshot of the current browser page for visual analysis. Returns the image directly to you.',
-  input_schema: { type: 'object', properties: {}, required: [] },
+  inputSchema: { type: 'object', properties: {}, required: [] },
   async execute() {
     const tab = tm().getActiveTab()
     if (!tab || tab.type !== 'browser') return 'No browser tab active.'

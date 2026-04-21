@@ -11,7 +11,7 @@ const tm = () => require('../tabManager')
 registry.register({
   name: 'generateReport',
   description: 'Generate a formatted markdown report and save it to the Desktop. Returns the saved file path.',
-  input_schema: {
+  inputSchema: {
     type: 'object',
     properties: {
       title:    { type: 'string', description: 'Report title' },
@@ -41,7 +41,7 @@ registry.register({
 registry.register({
   name: 'exportPDF',
   description: 'Save the current browser page as a PDF file to the Desktop. Returns the file path.',
-  input_schema: {
+  inputSchema: {
     type: 'object',
     properties: {
       filename: { type: 'string', description: 'Output filename without .pdf extension.' },

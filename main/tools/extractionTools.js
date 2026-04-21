@@ -25,7 +25,7 @@ function tableToMarkdown({ rows }) {
 registry.register({
   name: 'extractTable',
   description: 'Extract HTML tables from the current page as markdown. Returns all tables found (up to 5).',
-  input_schema: {
+  inputSchema: {
     type: 'object',
     properties: {
       tableIndex: {
@@ -81,7 +81,7 @@ registry.register({
 registry.register({
   name: 'exportCSV',
   description: 'Convert a markdown table to CSV and save to Desktop. Returns file path.',
-  input_schema: {
+  inputSchema: {
     type: 'object',
     properties: {
       markdown: { type: 'string', description: 'Markdown table to convert' },
@@ -120,7 +120,7 @@ registry.register({
 registry.register({
   name: 'extractEntities',
   description: 'Extract structured entities (prices, emails, phones, dates, URLs) from the current page.',
-  input_schema: {
+  inputSchema: {
     type: 'object',
     properties: {
       types: {
@@ -174,7 +174,7 @@ registry.register({
 registry.register({
   name: 'getSelectedText',
   description: 'Get the text currently selected by the user on the page.',
-  input_schema: { type: 'object', properties: {}, required: [] },
+  inputSchema: { type: 'object', properties: {}, required: [] },
   async execute() {
     const tab = tm().getActiveTab()
     if (!tab || tab.type !== 'browser') return 'No browser tab active.'
