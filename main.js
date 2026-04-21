@@ -6,14 +6,8 @@ const { register: registerIPC } = require('./main/ipcHandlers')
 const triggerEngine = require('./main/routines/triggerEngine')
 const settings      = require('./main/settings')
 
-// Disable hardware acceleration to prevent GPU process crash/restart freezes
-// (software rendering is used anyway since EGL/Metal fallback fails on this machine)
+// Disable hardware acceleration — prevents GPU process crash/restart freezes
 app.disableHardwareAcceleration()
-
-// Force Metal on macOS to suppress EGL GPU probe noise
-if (process.platform === 'darwin') {
-  app.commandLine.appendSwitch('use-angle', 'metal')
-}
 
 // Load saved API keys on startup
 const _saved = settings.getAll()
