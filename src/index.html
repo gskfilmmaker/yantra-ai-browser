@@ -229,12 +229,27 @@
         <button class="modal-close" id="settingsModalClose">×</button>
       </div>
       <div class="modal-body">
+        <div class="settings-section-title">AI Providers</div>
         <div class="modal-field">
-          <label class="field-label">Anthropic API Key</label>
+          <label class="field-label">Anthropic API Key (Claude)</label>
           <div class="api-key-wrap">
             <input id="settingsApiKey" class="field-input" type="password" placeholder="sk-ant-…" autocomplete="off">
             <button class="api-key-toggle" id="apiKeyToggle">Show</button>
           </div>
+        </div>
+        <div class="modal-field">
+          <label class="field-label">OpenAI API Key (GPT-4o)</label>
+          <div class="api-key-wrap">
+            <input id="settingsOpenaiKey" class="field-input" type="password" placeholder="sk-…" autocomplete="off">
+            <button class="api-key-toggle" id="openaiKeyToggle">Show</button>
+          </div>
+        </div>
+        <div class="modal-field">
+          <label class="field-label">Preferred Provider</label>
+          <select id="settingsProvider" class="field-input">
+            <option value="anthropic">Claude (auto-fallback to GPT-4o)</option>
+            <option value="openai">GPT-4o (auto-fallback to Claude)</option>
+          </select>
           <div class="field-hint">Stored locally in ~/.strawberry/settings.json</div>
         </div>
         <div class="settings-sep"></div>

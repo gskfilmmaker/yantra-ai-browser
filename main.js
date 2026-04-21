@@ -11,11 +11,11 @@ if (process.platform === 'darwin') {
   app.commandLine.appendSwitch('use-angle', 'metal')
 }
 
-// Load saved API key if not set in environment
-if (!process.env.ANTHROPIC_API_KEY) {
-  const saved = settings.get('apiKey')
-  if (saved) process.env.ANTHROPIC_API_KEY = saved
-}
+// Load saved API keys on startup
+const _saved = settings.getAll()
+if (!process.env.ANTHROPIC_API_KEY  && _saved.apiKey)           process.env.ANTHROPIC_API_KEY  = _saved.apiKey
+if (!process.env.OPENAI_API_KEY     && _saved.openaiApiKey)     process.env.OPENAI_API_KEY     = _saved.openaiApiKey
+if (!process.env.PREFERRED_PROVIDER && _saved.preferredProvider) process.env.PREFERRED_PROVIDER = _saved.preferredProvider
 
 let mainWindow
 

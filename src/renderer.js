@@ -468,7 +468,9 @@ $('rpOverlay').addEventListener('click',  e => { if (e.target === $('rpOverlay')
 
 async function openSettingsModal() {
   const s = await strawberry.settings.get()
-  $('settingsApiKey').value = s.apiKey || ''
+  $('settingsApiKey').value    = s.apiKey             || ''
+  $('settingsOpenaiKey').value = s.openaiApiKey       || ''
+  $('settingsProvider').value  = s.preferredProvider  || 'anthropic'
   $('settingsModal').hidden = false
 }
 
@@ -479,16 +481,24 @@ $('settingsModalClose').addEventListener('click',  closeSettingsModal)
 $('settingsModalCancel').addEventListener('click', closeSettingsModal)
 $('settingsModal').addEventListener('click', e => { if (e.target === $('settingsModal')) closeSettingsModal() })
 
-$('apiKeyToggle').addEventListener('click', () => {
-  const inp = $('settingsApiKey')
-  const show = inp.type === 'password'
-  inp.type = show ? 'text' : 'password'
-  $('apiKeyToggle').textContent = show ? 'Hide' : 'Show'
-})
+function makeKeyToggle(inputId, btnId) {
+  $(btnId).addEventListener('click', () => {
+    const inp  = $(inputId)
+    const show = inp.type === 'password'
+    inp.type   = show ? 'text' : 'password'
+    $(btnId).textContent = show ? 'Hide' : 'Show'
+  })
+}
+makeKeyToggle('settingsApiKey',    'apiKeyToggle')
+makeKeyToggle('settingsOpenaiKey', 'openaiKeyToggle')
 
 $('settingsModalSave').addEventListener('click', async () => {
-  const key = $('settingsApiKey').value.trim()
-  if (key) await strawberry.settings.set('apiKey', key)
+  const anthropicKey = $('settingsApiKey').value.trim()
+  const openaiKey    = $('settingsOpenaiKey').value.trim()
+  const provider     = $('settingsProvider').value
+  if (anthropicKey) await strawberry.settings.set('apiKey',           anthropicKey)
+  if (openaiKey)    await strawberry.settings.set('openaiApiKey',     openaiKey)
+  await strawberry.settings.set('preferredProvider', provider)
   closeSettingsModal()
   addCard({ id: `settings-saved-${Date.now()}`, type: 'text', text: '✓ Settings saved.' })
 })

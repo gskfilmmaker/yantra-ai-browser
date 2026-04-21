@@ -95,8 +95,9 @@ function register() {
   ipcMain.handle('settings:get', ()        => appSettings.getAll())
   ipcMain.handle('settings:set', (_, k, v) => {
     appSettings.set(k, v)
-    // Hot-reload API key without restart
-    if (k === 'apiKey' && v) process.env.ANTHROPIC_API_KEY = v
+    if (k === 'apiKey'            && v) process.env.ANTHROPIC_API_KEY  = v
+    if (k === 'openaiApiKey'      && v) process.env.OPENAI_API_KEY     = v
+    if (k === 'preferredProvider'     ) process.env.PREFERRED_PROVIDER  = v || 'anthropic'
   })
 
   // ── Data management ──────────────────────────────────────────────────────────
