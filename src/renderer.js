@@ -1,5 +1,5 @@
 'use strict'
-/* global api, strawberry */
+/* global api, yantra */
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -14,7 +14,7 @@ const convos = {}
 
 async function initAgents() {
   try {
-    activeAgent = await strawberry.agents.getActive()
+    activeAgent = await yantra.agents.getActive()
     updateAgentUI()
   } catch (e) { /* agents not yet available */ }
 }
@@ -29,7 +29,7 @@ function updateAgentUI() {
   const ntAvatar = $('ntAgentAvatar')
   const ntName   = $('ntAgentName')
   if (ntAvatar) ntAvatar.textContent = activeAgent.avatar || '🤖'
-  if (ntName)   ntName.textContent   = activeAgent.name   || 'Strawberry'
+  if (ntName)   ntName.textContent   = activeAgent.name   || 'Yantra'
 }
 
 initAgents()
@@ -100,7 +100,7 @@ function syncURL(tab) {
   if (!t) return
   const input = $('urlInput')
   if (t.title && t.url && !t.url.startsWith('about:')) {
-    input.value = `strawberry / ${t.title}`
+    input.value = `yantra / ${t.title}`
     input.dataset.realUrl = t.url
   } else {
     input.value = ''
@@ -209,7 +209,7 @@ agentSel?.addEventListener('click', async (e) => {
   e.stopPropagation()
   if (!agentPicker.hidden) { agentPicker.hidden = true; return }
 
-  const agents = await strawberry.agents.list()
+  const agents = await yantra.agents.list()
   agentPicker.innerHTML = agents.map(a => `
     <div class="agent-option${a.id === activeAgent?.id ? ' active' : ''}" data-id="${esc(a.id)}">
       <span class="agent-option-avatar">${esc(a.avatar || '🤖')}</span>
@@ -225,8 +225,8 @@ agentSel?.addEventListener('click', async (e) => {
 
   agentPicker.querySelectorAll('.agent-option').forEach(el => {
     el.addEventListener('click', async () => {
-      await strawberry.agents.setActive(el.dataset.id)
-      activeAgent = await strawberry.agents.getActive()
+      await yantra.agents.setActive(el.dataset.id)
+      activeAgent = await yantra.agents.getActive()
       updateAgentUI()
       agentPicker.hidden = true
       addCard({ id: `agent-${Date.now()}`, type: 'text',
@@ -272,7 +272,7 @@ async function openRoutinesPanel() {
 function closeRoutinesPanel() { $('rpOverlay').hidden = true; api.browser.show() }
 
 async function refreshRoutinesList() {
-  const routines = await strawberry.routines.list()
+  const routines = await yantra.routines.list()
   const list  = $('rpList')
   const empty = $('rpEmpty')
 
@@ -311,7 +311,7 @@ async function refreshRoutinesList() {
   // Wire up toggle checkboxes
   list.querySelectorAll('.rp-toggle-cb').forEach(cb => {
     cb.addEventListener('change', async () => {
-      await strawberry.routines.update(cb.dataset.id, { enabled: cb.checked })
+      await yantra.routines.update(cb.dataset.id, { enabled: cb.checked })
     })
   })
 
@@ -320,7 +320,7 @@ async function refreshRoutinesList() {
     btn.addEventListener('click', async () => {
       btn.textContent = '…'
       btn.disabled = true
-      await strawberry.routines.run(btn.dataset.id)
+      await yantra.routines.run(btn.dataset.id)
       btn.textContent = '▶'
       btn.disabled = false
     })
@@ -328,7 +328,7 @@ async function refreshRoutinesList() {
 
   list.querySelectorAll('.rp-edit-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const routines = await strawberry.routines.list()
+      const routines = await yantra.routines.list()
       const routine  = routines.find(r => r.id === btn.dataset.id)
       if (routine) openRoutineModal(routine)
     })
@@ -337,7 +337,7 @@ async function refreshRoutinesList() {
   list.querySelectorAll('.rp-del-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!confirm(`Delete routine?`)) return
-      await strawberry.routines.remove(btn.dataset.id)
+      await yantra.routines.remove(btn.dataset.id)
       await refreshRoutinesList()
     })
   })
@@ -448,9 +448,9 @@ $('routineModalSave').addEventListener('click', async () => {
   }
 
   if (_editingRoutineId) {
-    await strawberry.routines.update(_editingRoutineId, cfg)
+    await yantra.routines.update(_editingRoutineId, cfg)
   } else {
-    await strawberry.routines.create(cfg)
+    await yantra.routines.create(cfg)
   }
 
   closeRoutineModal()
@@ -469,7 +469,7 @@ $('rpOverlay').addEventListener('click',  e => { if (e.target === $('rpOverlay')
 
 async function openSettingsModal() {
   api.browser.hide()
-  const s = await strawberry.settings.get()
+  const s = await yantra.settings.get()
   $('settingsApiKey').value    = s.apiKey             || ''
   $('settingsOpenaiKey').value = s.openaiApiKey       || ''
   $('settingsProvider').value  = s.preferredProvider  || 'anthropic'
@@ -498,22 +498,22 @@ $('settingsModalSave').addEventListener('click', async () => {
   const anthropicKey = $('settingsApiKey').value.trim()
   const openaiKey    = $('settingsOpenaiKey').value.trim()
   const provider     = $('settingsProvider').value
-  if (anthropicKey) await strawberry.settings.set('apiKey',           anthropicKey)
-  if (openaiKey)    await strawberry.settings.set('openaiApiKey',     openaiKey)
-  await strawberry.settings.set('preferredProvider', provider)
+  if (anthropicKey) await yantra.settings.set('apiKey',           anthropicKey)
+  if (openaiKey)    await yantra.settings.set('openaiApiKey',     openaiKey)
+  await yantra.settings.set('preferredProvider', provider)
   closeSettingsModal()
   addCard({ id: `settings-saved-${Date.now()}`, type: 'text', text: '✓ Settings saved.' })
 })
 
 $('settingsClearMemory').addEventListener('click', async () => {
   if (!confirm('Clear all saved memory? This cannot be undone.')) return
-  await strawberry.memory.clear()
+  await yantra.memory.clear()
   addCard({ id: `cleared-mem-${Date.now()}`, type: 'text', text: 'Memory cleared.' })
 })
 
 $('settingsClearHistory').addEventListener('click', async () => {
   if (!confirm('Clear all chat history? This cannot be undone.')) return
-  await strawberry.sessions.clear()
+  await yantra.sessions.clear()
   addCard({ id: `cleared-hist-${Date.now()}`, type: 'text', text: 'Chat history cleared.' })
 })
 
@@ -553,10 +553,10 @@ $('agentModalSave').addEventListener('click', async () => {
     autoContext:  $('agentAutoContext').checked,
   }
 
-  const created = await strawberry.agents.create(cfg)
+  const created = await yantra.agents.create(cfg)
   closeAgentModal()
-  await strawberry.agents.setActive(created.id)
-  activeAgent = await strawberry.agents.getActive()
+  await yantra.agents.setActive(created.id)
+  activeAgent = await yantra.agents.getActive()
   updateAgentUI()
   addCard({ id: `created-${Date.now()}`, type: 'text',
     text: `Created and activated **${created.name}** ${created.avatar}` })
@@ -566,7 +566,7 @@ $('sbAvatar').addEventListener('click', openAgentModal)
 
 // ─── Routine events ───────────────────────────────────────────────────────────
 
-strawberry.on.routineEvent(ev => {
+yantra.on.routineEvent(ev => {
   if (ev.type === 'start') {
     addCard({ id: `rt-${ev.routineId}-start`, type: 'tool_call', toolName: 'runRoutine',
       toolInput: { name: ev.routineName }, status: 'running' })
@@ -645,7 +645,7 @@ let _allMemory = []
 async function openMemoryPanel() {
   api.browser.hide()
   $('memOverlay').hidden = false
-  _allMemory = await strawberry.memory.getAll()
+  _allMemory = await yantra.memory.getAll()
   renderMemoryList(_allMemory)
 }
 
@@ -688,7 +688,7 @@ function renderMemoryList(items) {
   list.querySelectorAll('.mem-del-btn').forEach(btn => {
     btn.addEventListener('click', async e => {
       e.stopPropagation()
-      await strawberry.memory.delete(btn.dataset.id)
+      await yantra.memory.delete(btn.dataset.id)
       _allMemory = _allMemory.filter(m => String(m.id) !== btn.dataset.id)
       renderMemoryList(filterMemory($('memSearch').value))
     })

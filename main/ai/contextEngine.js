@@ -26,7 +26,7 @@ async function buildContext({ agent, userPrompt }) {
   }
 
   // ── 3. Build system prompt from agent config ──────────────────────────────
-  let systemPrompt = agent.systemPrompt || 'You are Strawberry, an AI browser assistant.'
+  let systemPrompt = agent.systemPrompt || 'You are Yantra, a production AI browser automation platform.'
   systemPrompt += `\n\nACTIVE AGENT: ${agent.name}`
   if (agent.personality) systemPrompt += ` — ${agent.personality}`
   systemPrompt += `\n\nCore rules:\n- Use tools proactively to complete tasks\n- Save important findings with saveFinding\n- Be specific, cite URLs as sources\n- Chain multiple tools for complex research`

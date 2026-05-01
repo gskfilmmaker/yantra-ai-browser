@@ -3,7 +3,7 @@ const fs   = require('fs')
 const path = require('path')
 const os   = require('os')
 
-const DIR  = path.join(os.homedir(), '.strawberry')
+const DIR  = path.join(os.homedir(), '.yantra')
 const FILE = path.join(DIR, 'routines.json')
 
 function ensureDir() {
@@ -12,7 +12,14 @@ function ensureDir() {
 
 function load() {
   ensureDir()
-  if (!fs.existsSync(FILE)) return []
+  if (!fs.existsSync(FILE)) {
+    const old = path.join(os.homedir(), '.strawberry', 'routines.json')
+    if (fs.existsSync(old)) {
+      try { fs.copyFileSync(old, FILE) } catch { return [] }
+    } else {
+      return []
+    }
+  }
   try   { return JSON.parse(fs.readFileSync(FILE, 'utf8')) }
   catch { return [] }
 }
@@ -65,7 +72,6 @@ async function runRoutine(id, ctx = {}) {
 
   const summary = `Routine **${routine.name}** completed (${routine.actions.length} actions):\n\n${results.join('\n\n---\n\n')}`
 
-  // Auto-save routine result to memory
   require('../memoryStore').save({
     type: 'routine_run', title: `Routine: ${routine.name}`,
     result: summary.slice(0, 600), routineId: id,
@@ -74,7 +80,6 @@ async function runRoutine(id, ctx = {}) {
   return summary
 }
 
-// Returns routines whose trigger matches the given browser event
 function evaluateTriggers(event) {
   return load().filter(r => {
     if (!r.enabled) return false

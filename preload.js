@@ -51,8 +51,8 @@ contextBridge.exposeInMainWorld('api', {
   off: (channel) => ipcRenderer.removeAllListeners(channel),
 })
 
-// ── window.strawberry — full orchestration API ────────────────────────────────
-contextBridge.exposeInMainWorld('strawberry', {
+// ── window.yantra — full orchestration API ────────────────────────────────────
+contextBridge.exposeInMainWorld('yantra', {
   agents: {
     list:      ()           => ipcRenderer.invoke('agent:list'),
     getActive: ()           => ipcRenderer.invoke('agent:getActive'),

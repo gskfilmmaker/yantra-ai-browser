@@ -6,6 +6,8 @@ const { register: registerIPC } = require('./main/ipcHandlers')
 const triggerEngine = require('./main/routines/triggerEngine')
 const settings      = require('./main/settings')
 
+app.setName('Yantra')
+
 // Disable hardware acceleration — prevents GPU process crash/restart freezes
 app.disableHardwareAcceleration()
 
@@ -50,7 +52,7 @@ app.whenReady().then(() => {
   // ── Application menu with keyboard shortcuts ──────────────────────────────
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     {
-      label: 'Strawberry',
+      label: 'Yantra',
       submenu: [
         { role: 'about' },
         { type: 'separator' },

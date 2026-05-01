@@ -3,6 +3,58 @@ const registry = require('./registry')
 
 const tm = () => require('../tabManager')
 
+// ── detectCaptcha ─────────────────────────────────────────────────────────────
+
+registry.register({
+  name: 'detectCaptcha',
+  description: 'Check whether the current page shows a CAPTCHA or bot-detection challenge. Call this before automating sensitive flows.',
+  inputSchema: { type: 'object', properties: {}, required: [] },
+  async execute() {
+    const tab = tm().getActiveTab()
+    if (!tab || tab.type !== 'browser') return 'No browser tab active.'
+    try {
+      const result = await tab.view.webContents.executeJavaScript(`
+        (function() {
+          var text  = (document.body ? document.body.innerText : '').toLowerCase();
+          var html  = document.documentElement.innerHTML.toLowerCase();
+          var signals = [
+            /captcha/i.test(html),
+            /recaptcha/i.test(html),
+            /hcaptcha/i.test(html),
+            /cloudflare.*challenge/i.test(html),
+            /prove.*you.*human/i.test(text),
+            /i.*am.*not.*robot/i.test(text),
+            /security.*check/i.test(text),
+            !!document.querySelector('iframe[src*="captcha"]'),
+            !!document.querySelector('iframe[src*="recaptcha"]'),
+            !!document.querySelector('iframe[src*="hcaptcha"]'),
+            !!document.querySelector('.g-recaptcha'),
+            !!document.querySelector('[data-sitekey]'),
+          ];
+          var detected = signals.some(Boolean);
+          return {
+            detected,
+            url: location.href,
+            title: document.title,
+          };
+        })()
+      `)
+      if (result.detected) {
+        return JSON.stringify({
+          status: 'needs_human',
+          reason: 'captcha_detected',
+          url: result.url,
+          title: result.title,
+          message: 'CAPTCHA detected — human intervention required. Automation paused.',
+        })
+      }
+      return JSON.stringify({ status: 'clear', url: result.url })
+    } catch (e) {
+      return `Error detecting CAPTCHA: ${e.message}`
+    }
+  },
+})
+
 // ── getPageStructure ─────────────────────────────────────────────────────────
 
 registry.register({
@@ -300,5 +352,33 @@ registry.register({
     } catch (e) {
       return `Error capturing screenshot: ${e.message}`
     }
+  },
+})
+
+// ── confirmAction ─────────────────────────────────────────────────────────────
+
+registry.register({
+  name: 'confirmAction',
+  description: 'Request explicit user confirmation before performing a sensitive or irreversible action (form submit, payment, delete, unsubscribe). Always call this before such actions.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      action:  { type: 'string', description: 'Plain-English description of the action about to be performed' },
+      details: { type: 'string', description: 'Additional context (e.g. form fields, URL, amount)' },
+      risk:    { type: 'string', enum: ['low', 'medium', 'high'], description: 'Risk level of the action' },
+    },
+    required: ['action'],
+  },
+  async execute({ action, details, risk = 'medium' } = {}) {
+    const riskLabel = { low: '🟡 LOW', medium: '🟠 MEDIUM', high: '🔴 HIGH' }[risk] || '🟠 MEDIUM'
+    const msg = [
+      `**Confirmation Required** (Risk: ${riskLabel})`,
+      ``,
+      `**Action:** ${action}`,
+      details ? `**Details:** ${details}` : null,
+      ``,
+      `Reply **yes** to proceed or **no** to cancel.`,
+    ].filter(l => l !== null).join('\n')
+    return msg
   },
 })

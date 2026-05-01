@@ -26,7 +26,7 @@ require('./tools/automationTools')
 // ── Per-session conversation history (server-side) ───────────────────────────
 const sessionHistory = new Map()
 
-const SESSIONS_FILE = path.join(os.homedir(), '.strawberry', 'sessions.json')
+const SESSIONS_FILE = path.join(os.homedir(), '.yantra', 'sessions.json')
 
 function loadSessions() {
   try {

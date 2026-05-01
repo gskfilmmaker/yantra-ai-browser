@@ -3,7 +3,7 @@ const fs = require('fs')
 const path = require('path')
 const os = require('os')
 
-const DIR = path.join(os.homedir(), '.strawberry')
+const DIR  = path.join(os.homedir(), '.yantra')
 const FILE = path.join(DIR, 'memory.json')
 
 function ensureDir() {
@@ -12,7 +12,15 @@ function ensureDir() {
 
 function load() {
   ensureDir()
-  if (!fs.existsSync(FILE)) return []
+  if (!fs.existsSync(FILE)) {
+    // Migrate from .strawberry if present
+    const old = path.join(os.homedir(), '.strawberry', 'memory.json')
+    if (fs.existsSync(old)) {
+      try { fs.copyFileSync(old, FILE) } catch { return [] }
+    } else {
+      return []
+    }
+  }
   try { return JSON.parse(fs.readFileSync(FILE, 'utf8')) } catch { return [] }
 }
 
