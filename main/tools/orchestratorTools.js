@@ -1,15 +1,25 @@
 'use strict'
 const registry = require('./registry')
-const { executeTask } = require('../automation/executionOrchestrator')
+const { executeIntelligent } = require('../automation/intelligence/intelligenceLayer')
 
 // ── executeTask ───────────────────────────────────────────────────────────────
-// Exposes the full Execution Engine V2 as a single agent-callable tool.
-// Agents define a task as an ordered list of typed steps; the engine runs
-// observe-act-verify-retry for each step and returns a structured log.
+// Execution Intelligence v3 — routes through the intelligence layer which adds:
+//   • task memory (known selectors from prior runs on same domain)
+//   • semantic element resolution (text / aria-label / role matching)
+//   • vision + DOM fusion fallback when CSS selectors fail
+//   • adaptive replanning: modifies selectors, inserts steps, up to 3 replan rounds
+//   • structured reasoning output embedded in every response
 
 registry.register({
   name: 'executeTask',
-  description: `Execute a reliable multi-step browser automation task using the Observe-Act-Verify-Retry (OAVR) engine.
+  description: `Execute a reliable multi-step browser automation task using the OAVR engine with Execution Intelligence v3.
+
+Intelligence features (automatic, no configuration needed):
+ • Semantic element matching — finds elements by visible text, aria-label, role (not just CSS selectors)
+ • Task memory — reuses selector patterns learned from prior runs on the same site
+ • Adaptive replanning — when a step fails, generates a new plan (new selector, insert scroll/wait, etc.)
+ • Vision + DOM fusion fallback — captures visual context when DOM matching is exhausted
+ • Up to 3 replan rounds before marking a task failed
 
 Each step is typed (navigate, click, type, etc.) and has optional verification rules. The engine:
  1. Snapshots the DOM before each step
@@ -103,7 +113,7 @@ Use this instead of chaining individual tools when you need reliable multi-step 
     }
     const taskId = `task_${Date.now()}`
     try {
-      return await executeTask({ id: taskId, name: name || taskId, steps })
+      return await executeIntelligent({ id: taskId, name: name || taskId, steps })
     } catch (e) {
       return `Task execution error: ${e.message}`
     }

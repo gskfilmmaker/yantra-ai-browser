@@ -26,17 +26,21 @@ const STEP_TO_TOOL = {
 }
 
 // ── Main entry point ──────────────────────────────────────────────────────────
-// Accepts a task object: { id?, name?, steps: [ { type, params, verify?, ... } ] }
-// Returns a formatted string report (compatible with Anthropic tool_result).
-
+// Public string-result wrapper (backwards-compatible).
 async function executeTask(task) {
+  const { formatted } = await executeTaskRaw(task)
+  return formatted
+}
+
+// Structured result — used by the intelligence layer.
+// Returns { formatted: string, report: TaskStateMachine.getReport() }
+async function executeTaskRaw(task) {
   if (!Array.isArray(task.steps) || task.steps.length === 0) {
-    return 'Error: task.steps must be a non-empty array.'
+    return { formatted: 'Error: task.steps must be a non-empty array.', report: null }
   }
 
-  const sm  = new TaskStateMachine(task)
-  const wc  = _getWebContents()        // may be null for non-browser tabs
-  const ctx = { webContents: wc }
+  const sm = new TaskStateMachine(task)
+  const wc = _getWebContents()
 
   sm.start()
 
@@ -54,7 +58,7 @@ async function executeTask(task) {
         sm.stepFailed(i, 'CAPTCHA detected before step — automation paused')
         if (step.required) {
           sm.fail('CAPTCHA requires human intervention')
-          return _formatReport(sm)
+          return _done(sm)
         }
         sm.stepSkipped(i, 'captcha_block')
         continue
@@ -118,7 +122,7 @@ async function executeTask(task) {
 
         if (step.required) {
           sm.fail(`Required step "${step.id}" failed: ${failReason}`)
-          return _formatReport(sm)
+          return _done(sm)
         }
       }
 
@@ -126,12 +130,11 @@ async function executeTask(task) {
       sm.stepFailed(i, err)
       if (step.required) {
         sm.fail(`Required step "${step.id}" threw: ${err.message}`)
-        return _formatReport(sm)
+        return _done(sm)
       }
     }
   }
 
-  // All steps processed — determine final task state
   const anyRequired = sm.steps.some(s => s.required && s.state === STEP_STATES.FAILED)
   if (anyRequired) {
     sm.fail('One or more required steps failed')
@@ -139,7 +142,7 @@ async function executeTask(task) {
     sm.complete()
   }
 
-  return _formatReport(sm)
+  return _done(sm)
 }
 
 // ── Step action dispatcher ────────────────────────────────────────────────────
@@ -259,4 +262,8 @@ function _formatReport(sm) {
   return lines.filter(l => l !== null).join('\n')
 }
 
-module.exports = { executeTask }
+function _done(sm) {
+  return { formatted: _formatReport(sm), report: sm.getReport() }
+}
+
+module.exports = { executeTask, executeTaskRaw }
