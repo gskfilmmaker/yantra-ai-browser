@@ -11,7 +11,7 @@ const ALL_TOOLS = [
   'extractLinks', 'saveFinding', 'save_note', 'getRecentFindings', 'searchMemory',
   'extractTable', 'exportCSV', 'extractEntities', 'getSelectedText',
   'generateReport', 'exportPDF',
-  'detectCaptcha', 'confirmAction',
+  'detectCaptcha', 'confirmAction', 'executeTask',
   'getPageStructure', 'clickElement', 'typeInField', 'pressKey', 'scrollPage',
   'waitForElement', 'captureScreenshot',
   'listRoutines', 'runRoutine',
@@ -99,7 +99,7 @@ Sensitive action rules:
 
 Always use CSS selectors from getPageStructure output. Never guess selectors.`,
     personality: 'precise, cautious, step-by-step',
-    tools: ['get_current_page', 'detectCaptcha', 'confirmAction',
+    tools: ['get_current_page', 'executeTask', 'detectCaptcha', 'confirmAction',
             'getPageStructure', 'clickElement', 'typeInField',
             'pressKey', 'scrollPage', 'waitForElement', 'captureScreenshot', 'open_url',
             'extractTable', 'extractEntities', 'getSelectedText', 'save_note', 'saveFinding'],
