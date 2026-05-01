@@ -23,6 +23,7 @@ require('./tools/extractionTools')
 require('./tools/documentTools')
 require('./tools/automationTools')
 require('./tools/orchestratorTools')
+require('./tools/orchestrationTools')
 
 // ── Per-session conversation history (server-side) ───────────────────────────
 const sessionHistory = new Map()
