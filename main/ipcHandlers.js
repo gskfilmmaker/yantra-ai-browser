@@ -25,6 +25,9 @@ require('./tools/automationTools')
 require('./tools/orchestratorTools')
 require('./tools/orchestrationTools')
 require('./tools/cognitiveTools')
+require('./tools/vaultTools')
+require('./tools/autonomyTools')
+require('./tools/personaTools')
 
 // ── Per-session conversation history (server-side) ───────────────────────────
 const sessionHistory = new Map()
@@ -153,22 +156,33 @@ function register() {
       // 5. Get tool schemas filtered to this agent's permissions
       const tools = registry.schemasForAgent(agent.tools)
 
-      // 6. Run the streaming agent loop
+      // 6. Inject active persona system prompt if one is set
+      let systemPrompt = ctx.systemPrompt
+      try {
+        const activePersonaId = appSettings.get('activePersonaId')
+        if (activePersonaId) {
+          const personaEngine = require('./agents/personaEngine')
+          const personaPrompt = personaEngine.buildSystemPrompt(activePersonaId)
+          if (personaPrompt) systemPrompt = `${systemPrompt}\n\n---\n\n${personaPrompt}`
+        }
+      } catch { /* non-fatal */ }
+
+      // 7. Run the streaming agent loop
       const priorHistory = sessionHistory.get(sessionId) || []
       const finalMessages = await llmClient.runAgentLoop({
         event,
         sessionId,
         message:      fullMessage,
         history:      priorHistory,
-        systemPrompt: ctx.systemPrompt,
+        systemPrompt,
         tools,
       })
 
-      // 6. Persist conversation
+      // 8. Persist conversation
       sessionHistory.set(sessionId, finalMessages)
       saveSessions()
 
-      // 7. Auto-save research result to memory
+      // 9. Auto-save research result to memory
       const lastAsst = [...finalMessages].reverse().find(m => m.role === 'assistant')
       const lastText = Array.isArray(lastAsst?.content)
         ? (lastAsst.content.find(b => b.type === 'text')?.text || '')

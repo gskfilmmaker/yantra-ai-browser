@@ -3,7 +3,8 @@ const { app, BrowserWindow, Menu } = require('electron')
 const path = require('path')
 const tabManager    = require('./main/tabManager')
 const { register: registerIPC } = require('./main/ipcHandlers')
-const triggerEngine = require('./main/routines/triggerEngine')
+const triggerEngine  = require('./main/routines/triggerEngine')
+const autonomyEngine = require('./main/autonomy/autonomyEngine')
 const settings      = require('./main/settings')
 
 app.setName('Yantra')
@@ -48,6 +49,9 @@ app.whenReady().then(() => {
 
   // Wire routine trigger engine
   triggerEngine.init(mainWindow)
+
+  // Wire proactive autonomy engine (scheduler + condition monitor)
+  autonomyEngine.init(mainWindow)
 
   // ── Application menu with keyboard shortcuts ──────────────────────────────
   Menu.setApplicationMenu(Menu.buildFromTemplate([
