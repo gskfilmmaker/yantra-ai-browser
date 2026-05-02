@@ -12,8 +12,10 @@ const FILE = path.join(DIR, 'orchestration_memory.json')
 
 class CrossTaskMemory {
   constructor(graphId) {
-    this.graphId = graphId
-    this._store  = new Map()   // nodeId → result (in-memory, current run)
+    this.graphId      = graphId
+    this._store       = new Map()   // nodeId → result
+    this._strategies  = new Map()   // nodeId → { agent, tool, confidence, nodeType }
+    this._retryPatterns = []        // [{ failType, recovery, succeeded }]
   }
 
   // ── In-run result sharing ─────────────────────────────────────────────────
@@ -33,6 +35,38 @@ class CrossTaskMemory {
     return out
   }
 
+  // ── Strategy storage (v5 cognitive layer) ─────────────────────────────────
+
+  setStrategy(nodeId, strategy) {
+    this._strategies.set(nodeId, strategy)
+  }
+
+  getStrategy(nodeId) {
+    return this._strategies.get(nodeId) ?? null
+  }
+
+  getStrategies() {
+    const out = {}
+    for (const [k, v] of this._strategies) out[k] = v
+    return out
+  }
+
+  addRetryPattern(pattern) {
+    this._retryPatterns.push(pattern)
+  }
+
+  getRetryPatterns() {
+    return [...this._retryPatterns]
+  }
+
+  // Full snapshot including strategies (for LLM context injection)
+  cognitiveSnapshot() {
+    return {
+      results:    this.snapshot(),
+      strategies: this.getStrategies(),
+    }
+  }
+
   // ── Cross-run persistence ─────────────────────────────────────────────────
 
   persist(graphSummary) {
@@ -46,6 +80,8 @@ class CrossTaskMemory {
       stepsPassed: graphSummary.stepsPassed || 0,
       completedAt: new Date().toISOString(),
       durationMs:  graphSummary.durationMs  || 0,
+      strategies:  this.getStrategies(),
+      retryPatterns: this.getRetryPatterns(),
     }
     // Cap to 50 most recent graph runs
     const keys = Object.keys(db)
