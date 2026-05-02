@@ -118,6 +118,7 @@ function register() {
   ipcMain.handle('agent:run', async (event, { message, sessionId }) => {
     if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY) {
       event.sender.send('agent-event', { sessionId, type: 'error', text: 'Add an API key in Settings (⚙).' })
+      event.sender.send('agent-event', { sessionId, type: 'done' })
       return
     }
 
