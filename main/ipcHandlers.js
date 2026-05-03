@@ -205,6 +205,50 @@ function register() {
 
     event.sender.send('agent-event', { sessionId, type: 'done' })
   })
+
+  // ── Vault ──────────────────────────────────────────────────────────────────
+  const vault = require('./vault/credentialVault')
+  ipcMain.handle('vault:list',   ()          => vault.list())
+  ipcMain.handle('vault:get',    (_, site)   => vault.get(site))
+  ipcMain.handle('vault:save',   (_, data)   => vault.save(data.site, data.username, data.password, data.notes))
+  ipcMain.handle('vault:remove', (_, id)     => vault.remove(id))
+
+  // ── Personas ───────────────────────────────────────────────────────────────
+  const personaEngine = require('./agents/personaEngine')
+  ipcMain.handle('persona:list',      ()           => personaEngine.list())
+  ipcMain.handle('persona:getActive', ()           => {
+    const id = appSettings.get('activePersonaId')
+    return id ? personaEngine.get(id) : personaEngine.get('genius-gsk')
+  })
+  ipcMain.handle('persona:switch',    (_, nameOrId) => {
+    const p = personaEngine.get(nameOrId)
+    if (p) appSettings.set('activePersonaId', p.id)
+    return p
+  })
+  ipcMain.handle('persona:teach',     (_, { nameOrId, insight }) => {
+    const p = personaEngine.get(nameOrId)
+    if (p) personaEngine.learn(p.id, insight)
+    return !!p
+  })
+  ipcMain.handle('persona:insights',  (_, nameOrId) => personaEngine.getInsights(nameOrId))
+  ipcMain.handle('persona:create',    (_, cfg)      => {
+    const id = personaEngine.create(cfg)
+    return personaEngine.get(id)
+  })
+
+  // ── Autonomy ───────────────────────────────────────────────────────────────
+  ipcMain.handle('autonomy:listSchedules',  ()   => {
+    try { const { scheduler } = require('./autonomy/autonomyEngine'); return scheduler.list() } catch { return [] }
+  })
+  ipcMain.handle('autonomy:listMonitors',   ()   => {
+    try { const { conditionMonitor } = require('./autonomy/autonomyEngine'); return conditionMonitor.list() } catch { return [] }
+  })
+  ipcMain.handle('autonomy:cancelSchedule', (_, id) => {
+    try { const { scheduler } = require('./autonomy/autonomyEngine'); return scheduler.cancel(id) } catch { return false }
+  })
+  ipcMain.handle('autonomy:cancelMonitor',  (_, id) => {
+    try { const { conditionMonitor } = require('./autonomy/autonomyEngine'); return conditionMonitor.cancel(id) } catch { return false }
+  })
 }
 
 module.exports = { register }

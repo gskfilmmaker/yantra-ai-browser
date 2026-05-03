@@ -8,14 +8,14 @@
 <body>
 <div class="app">
 
-  <!-- ── Chrome-style tab strip ───────────────────────────────── -->
+  <!-- ── Tab strip ──────────────────────────────────────────────── -->
   <div class="tab-strip" id="tabStrip">
     <div class="traffic-gap"></div>
     <div class="tabs-list" id="tabsList"></div>
     <button class="tab-add" id="tabAdd" title="New tab">+</button>
   </div>
 
-  <!-- ── Navigation row ───────────────────────────────────────── -->
+  <!-- ── Navigation row ─────────────────────────────────────────── -->
   <div class="nav-row" id="navRow">
     <button class="nav-btn" id="navBack" disabled>
       <svg width="15" height="15" viewBox="0 0 15 15"><path d="M10 2L5 7.5L10 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
@@ -26,17 +26,14 @@
     <button class="nav-btn" id="navReload">
       <svg width="15" height="15" viewBox="0 0 15 15"><path d="M13 3A6 6 0 1 0 14 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><polyline points="10,1 13,3 11,6" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" fill="none"/></svg>
     </button>
-
-    <!-- Session context URL bar -->
     <div class="url-bar-wrap" id="urlBarWrap">
       <svg class="url-bar-icon" width="14" height="14" viewBox="0 0 14 14"><path d="M7 1.5C3.96 1.5 1.5 3.96 1.5 7S3.96 12.5 7 12.5 12.5 10.04 12.5 7 10.04 1.5 7 1.5z" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M1.5 7h11M7 1.5C5.5 4 5 5.5 5 7s.5 3 2 5.5M7 1.5C8.5 4 9 5.5 9 7s-.5 3-2 5.5" stroke="currentColor" stroke-width="1.1" fill="none"/></svg>
       <input id="urlInput" class="url-input" placeholder="Search or enter URL…" autocomplete="off" spellcheck="false"/>
     </div>
-
     <div class="nav-actions">
       <button class="nav-action-btn outline" id="btnUpdateNow">
         <svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 2v7M3 6l3-4 3 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-        Update Now
+        Analyze
       </button>
       <button class="nav-action-btn solid" id="btnChat">
         <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1h10v7H7l-3 3V8H1z" stroke="white" stroke-width="1.4" fill="none" stroke-linejoin="round"/></svg>
@@ -45,118 +42,321 @@
     </div>
   </div>
 
-  <!-- ── Context bar (active page + active agent) ─────────────── -->
+  <!-- ── Context bar ────────────────────────────────────────────── -->
   <div class="context-bar" id="contextBar" hidden>
     <span class="ctx-favicon" id="ctxFavicon">🌐</span>
     <span class="ctx-page"    id="ctxPage">New Tab</span>
     <span class="ctx-sep">·</span>
-    <span class="ctx-agent"   id="ctxAgent">Research Agent</span>
+    <span class="ctx-agent"   id="ctxAgent">Yantra</span>
   </div>
 
-  <!-- ── Canvas (sidebar + browser area) ──────────────────────── -->
+  <!-- ── Canvas: sidebar + browser area ─────────────────────────── -->
   <div class="canvas">
 
-    <!-- Left sidebar -->
-    <div class="sidebar" id="sidebar">
-      <div class="sb-logo">
-        <svg width="22" height="22" viewBox="0 0 22 22"><rect width="22" height="22" rx="5" fill="#E8430A"/><rect x="5" y="5" width="5" height="5" rx="1" fill="white"/><rect x="12" y="5" width="5" height="5" rx="1" fill="white"/><rect x="5" y="12" width="5" height="5" rx="1" fill="white"/><rect x="12" y="12" width="5" height="5" rx="1" fill="white"/></svg>
+    <!-- ── LEFT SIDEBAR ─────────────────────────────────────────── -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sb-brand">
+        <div class="sb-logo-icon">⟁</div>
+        <span class="sb-brand-name">Yantra</span>
       </div>
-      <button class="sb-btn" id="sbNew" title="New tab">
-        <svg width="15" height="15" viewBox="0 0 15 15"><path d="M7.5 2v11M2 7.5h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-      </button>
-      <button class="sb-btn" id="sbRoutines" title="Routines">
-        <svg width="15" height="15" viewBox="0 0 15 15"><path d="M7.5 1.5l1.3 3.9h4.1l-3.3 2.4 1.3 3.9-3.4-2.4-3.4 2.4 1.3-3.9L2.1 5.4h4.1z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" fill="none"/></svg>
-      </button>
-      <button class="sb-btn" id="sbHistory" title="History">
-        <svg width="15" height="15" viewBox="0 0 15 15"><circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M7.5 4.5V8l2 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-      </button>
-      <div class="sb-spacer"></div>
-      <button class="sb-btn" id="sbSettings" title="Settings">
-        <svg width="15" height="15" viewBox="0 0 15 15"><circle cx="7.5" cy="7.5" r="2" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M7.5 1v1.5M7.5 12.5V14M1 7.5h1.5M12.5 7.5H14M2.7 2.7l1 1M11.3 11.3l1 1M11.3 2.7l-1 1M3.7 11.3l-1 1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-      </button>
-      <button class="sb-avatar" id="sbAvatar" title="Create agent">+</button>
-    </div>
 
-    <!-- Browser shell — BrowserView is anchored here by main process -->
+      <div class="sb-nav">
+        <button class="sb-btn active" data-view="browser" id="sbBrowser">
+          <span class="sb-icon">🌐</span><span class="sb-label">Browser</span>
+        </button>
+        <button class="sb-btn" data-view="home" id="sbHome">
+          <span class="sb-icon">⌂</span><span class="sb-label">Home</span>
+        </button>
+        <button class="sb-btn" id="sbNew">
+          <span class="sb-icon">+</span><span class="sb-label">New Tab</span>
+        </button>
+      </div>
+
+      <div class="sb-section-label">Intelligence</div>
+      <div class="sb-nav">
+        <button class="sb-btn" data-view="agents" id="sbAgents">
+          <span class="sb-icon">🤖</span><span class="sb-label">Agents</span>
+        </button>
+        <button class="sb-btn" data-view="vault" id="sbVault">
+          <span class="sb-icon">🔒</span><span class="sb-label">Vault</span>
+        </button>
+        <button class="sb-btn" data-view="automation" id="sbAutomation">
+          <span class="sb-icon">⚡</span><span class="sb-label">Automation</span>
+        </button>
+        <button class="sb-btn" data-view="memory" id="sbHistory">
+          <span class="sb-icon">📚</span><span class="sb-label">Memory</span>
+        </button>
+        <!-- legacy alias kept for backward compat -->
+        <button class="sb-btn" data-view="automation" id="sbRoutines" style="display:none"></button>
+      </div>
+
+      <div class="sb-spacer"></div>
+
+      <div class="sb-nav">
+        <button class="sb-btn" id="sbActivityToggle">
+          <span class="sb-icon">🔔</span>
+          <span class="sb-label">Activity</span>
+          <span class="sb-badge" id="activityBadge" hidden>0</span>
+        </button>
+        <button class="sb-btn" data-view="settings" id="sbSettings">
+          <span class="sb-icon">⚙</span><span class="sb-label">Settings</span>
+        </button>
+        <!-- legacy agent creation, now hidden -->
+        <button id="sbAvatar" style="display:none"></button>
+      </div>
+
+      <!-- Active Persona Card -->
+      <div class="sb-persona" id="personaCard">
+        <span class="sb-persona-avatar" id="personaAvatar">🧠</span>
+        <div class="sb-persona-meta">
+          <div class="sb-persona-name" id="personaName">Genius GSK</div>
+          <div class="sb-persona-role">Active persona</div>
+        </div>
+        <button class="sb-persona-switch">⇄</button>
+      </div>
+    </nav>
+
+    <!-- ── BROWSER SHELL (BrowserView anchored here) ───────────── -->
     <div class="browser-shell" id="browserShell">
 
-      <!-- New-tab page (AI-first) -->
+      <!-- New-tab page -->
       <div class="new-tab-page" id="newTabPage">
-        <div class="nt-agent-avatar" id="ntAgentAvatar">🔍</div>
-        <div class="nt-agent-name" id="ntAgentName">Research Agent</div>
-        <div class="nt-subtitle">How can I help you today?</div>
-        <div class="nt-chips">
-          <button class="nt-chip" data-msg="Summarize the current page and highlight key insights.">Summarize page</button>
-          <button class="nt-chip" data-msg="Search the web and find the latest news on AI and technology.">Latest news</button>
-          <button class="nt-chip" data-msg="Extract all tables and structured data from this page.">Extract data</button>
-          <button class="nt-chip" data-msg="What can you help me with? Give me an overview of your capabilities.">Your capabilities</button>
-        </div>
+        <div class="nt-agent-avatar" id="ntAgentAvatar">🧠</div>
+        <div class="nt-agent-name"   id="ntAgentName">Yantra</div>
+        <div class="nt-subtitle">AI-powered command browser</div>
         <div class="nt-input-wrap">
-          <input id="ntSearch" class="nt-search" placeholder="Ask anything, or type a URL to browse…" autocomplete="off" spellcheck="false"/>
+          <input id="ntSearch" class="nt-search" placeholder="Ask anything, or enter a URL…" autocomplete="off" spellcheck="false"/>
           <button class="nt-go" id="ntGo">
             <svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 12V4M4 8l4-4 4 4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>
-        <div class="nt-hint">Type a URL to browse · Press <kbd>Enter</kbd> to ask Yantra</div>
+        <div class="nt-chips">
+          <button class="nt-chip" data-msg="Summarize the current page and highlight key insights.">📄 Summarize Page</button>
+          <button class="nt-chip" data-msg="Search the web and find the latest AI and technology news.">🔍 AI News</button>
+          <button class="nt-chip" data-msg="Extract all tables and structured data from this page.">📊 Extract Data</button>
+          <button class="nt-chip" data-msg="What can you help me with? Show me your capabilities.">🧠 Capabilities</button>
+        </div>
+        <div class="nt-hint">Type a URL to browse · Press <kbd>Enter</kbd> to ask Yantra · <kbd>Cmd+K</kbd> for commands</div>
       </div>
 
-      <!-- Find bar — floats top-right when Cmd+F is pressed -->
+      <!-- Find bar -->
       <div class="find-bar" id="findBar" hidden>
         <input id="findInput" class="find-input" placeholder="Find in page…" autocomplete="off" spellcheck="false"/>
         <span id="findCount" class="find-count"></span>
-        <button id="findPrev"  class="find-nav" title="Previous (Shift+Enter)">↑</button>
-        <button id="findNext"  class="find-nav" title="Next (Enter)">↓</button>
-        <button id="findClose" class="find-close" title="Close (Escape)">×</button>
+        <button id="findPrev"  class="find-nav">↑</button>
+        <button id="findNext"  class="find-nav">↓</button>
+        <button id="findClose" class="find-close">×</button>
       </div>
 
-      <!-- AI chat overlay — floats above the BrowserView -->
+      <!-- ── PANEL: HOME / COMMAND CENTER ───────────────────────── -->
+      <div class="panel-full" id="panelHome" hidden>
+        <div class="panel-header">
+          <span class="panel-title">Command Center</span>
+          <button class="panel-close" data-close-panel>✕</button>
+        </div>
+        <div class="panel-content" id="panelHomeContent">
+          <div class="home-grid" id="homeGrid">
+            <!-- filled by renderer -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PANEL: AGENTS & PERSONAS ───────────────────────────── -->
+      <div class="panel-full" id="panelAgents" hidden>
+        <div class="panel-header">
+          <span class="panel-title">Agents &amp; Personas</span>
+          <button class="panel-btn panel-btn-primary" id="btnCreateAgent">+ New Agent</button>
+          <button class="panel-close" data-close-panel>✕</button>
+        </div>
+        <div class="panel-content">
+          <div id="personaSection">
+            <div class="agents-divider">Personas</div>
+            <div class="persona-grid" id="personaGrid"></div>
+          </div>
+          <div id="agentSection">
+            <div class="agents-divider">Agents</div>
+            <div id="agentGrid"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PANEL: VAULT ───────────────────────────────────────── -->
+      <div class="panel-full" id="panelVault" hidden>
+        <div class="panel-header">
+          <span class="panel-title">🔒 Vault</span>
+          <button class="panel-close" data-close-panel>✕</button>
+        </div>
+        <div class="vault-search-wrap">
+          <input id="vaultSearch" class="vault-search" placeholder="Search credentials…" autocomplete="off"/>
+        </div>
+        <div class="panel-content" style="padding-top:0">
+          <div class="vault-lock-notice">🔐 Credentials are encrypted with OS-level encryption. Passwords are never shown by default.</div>
+          <div id="vaultList" class="vault-list"></div>
+          <div id="vaultEmpty" class="panel-empty" hidden>
+            <div class="panel-empty-icon">🔒</div>
+            <div class="panel-empty-title">Vault is empty</div>
+            <div class="panel-empty-sub">Ask Yantra to save credentials for a site, or use the <code>saveCredential</code> command.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PANEL: AUTOMATION (schedules + monitors) ───────────── -->
+      <div class="panel-full" id="panelAutomation" hidden>
+        <div class="panel-header">
+          <span class="panel-title">⚡ Automation</span>
+          <button class="panel-close" data-close-panel>✕</button>
+        </div>
+        <div class="auto-tabs">
+          <button class="auto-tab active" data-auto-tab="schedules">Schedules</button>
+          <button class="auto-tab" data-auto-tab="monitors">Page Monitors</button>
+          <button class="auto-tab" data-auto-tab="routines">Routines</button>
+        </div>
+        <div id="autoSchedules" class="auto-list"></div>
+        <div id="autoMonitors"  class="auto-list" hidden></div>
+        <div id="autoRoutinesWrap" hidden>
+          <!-- routines moved here from legacy panel -->
+          <div class="auto-list" id="autoRoutinesList"></div>
+        </div>
+        <div id="autoEmpty" class="panel-empty" hidden>
+          <div class="panel-empty-icon">⚡</div>
+          <div class="panel-empty-title">No automations yet</div>
+          <div class="panel-empty-sub">Schedule tasks, monitor pages for changes, or create routines that run automatically.</div>
+        </div>
+      </div>
+
+      <!-- ── PANEL: MEMORY ──────────────────────────────────────── -->
+      <div class="panel-full" id="panelMemory" hidden>
+        <div class="panel-header">
+          <span class="panel-title">📚 Memory</span>
+          <div class="mem-search-wrap">
+            <input id="memSearch" class="mem-search" placeholder="Search memory…" autocomplete="off"/>
+          </div>
+          <button class="panel-close" data-close-panel>✕</button>
+        </div>
+        <div class="panel-content">
+          <div id="memList"></div>
+          <div id="memEmpty" class="panel-empty" hidden>
+            <div class="panel-empty-icon">📚</div>
+            <div class="panel-empty-title">No memories yet</div>
+            <div class="panel-empty-sub">Research results, routine outputs, and notes will appear here.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PANEL: SETTINGS ────────────────────────────────────── -->
+      <div class="panel-full" id="panelSettings" hidden>
+        <div class="panel-header">
+          <span class="panel-title">⚙ Settings</span>
+          <button class="panel-close" data-close-panel>✕</button>
+        </div>
+        <div class="panel-content" style="max-width:540px">
+          <div class="settings-section">
+            <div class="settings-section-title">AI Providers</div>
+            <div class="modal-field">
+              <label class="field-label">Anthropic API Key (Claude)</label>
+              <div class="api-key-wrap">
+                <input id="settingsApiKey" class="field-input" type="password" placeholder="sk-ant-…" autocomplete="off">
+                <button class="api-key-toggle" id="apiKeyToggle">Show</button>
+              </div>
+            </div>
+            <div class="modal-field">
+              <label class="field-label">OpenAI API Key (GPT-4o)</label>
+              <div class="api-key-wrap">
+                <input id="settingsOpenaiKey" class="field-input" type="password" placeholder="sk-…" autocomplete="off">
+                <button class="api-key-toggle" id="openaiKeyToggle">Show</button>
+              </div>
+            </div>
+            <div class="modal-field">
+              <label class="field-label">Preferred Provider</label>
+              <select id="settingsProvider" class="field-input">
+                <option value="anthropic">Claude (auto-fallback to GPT-4o)</option>
+                <option value="openai">GPT-4o (auto-fallback to Claude)</option>
+              </select>
+              <div class="field-hint">Stored locally in ~/.yantra/settings.json</div>
+            </div>
+          </div>
+          <hr class="settings-sep">
+          <div class="settings-section">
+            <div class="settings-section-title">Data</div>
+            <div class="settings-actions-row">
+              <button class="settings-danger-btn" id="settingsClearMemory">Clear Memory</button>
+              <button class="settings-danger-btn" id="settingsClearHistory">Clear Chat History</button>
+            </div>
+          </div>
+          <div style="padding-top:20px">
+            <button class="panel-btn panel-btn-primary" id="settingsSaveBtn" style="width:100%;padding:10px">Save Settings</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── AI Chat Overlay ────────────────────────────────────── -->
       <div class="ai-overlay" id="aiOverlay">
-
-        <!-- Drag handle to resize -->
         <div class="ai-drag-handle" id="aiDragHandle"></div>
-
-        <!-- Thread -->
+        <div class="session-tab" id="sessionTab">Yantra</div>
         <div class="ai-thread" id="aiThread"></div>
-
-        <!-- Input row -->
         <div class="ai-input-row" id="aiInputRow">
           <button class="ai-attach" title="Attach">
             <svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 2v10M4 6l4-4 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M3 14h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
           </button>
-          <textarea id="aiInput" class="ai-input" placeholder="Ask Yantra anything…" rows="1"></textarea>
+          <textarea id="aiInput" class="ai-input" placeholder="Ask Yantra anything… (Cmd+K for commands)" rows="1"></textarea>
           <div class="ai-input-meta">
             <span class="smart-tag">★ Smart</span>
             <button class="agent-sel" id="agentSel" title="Switch agent">
-              <span id="agentSelAvatar">🔍</span>
+              <span id="agentSelAvatar">🧠</span>
               <svg width="8" height="8" viewBox="0 0 8 8"><path d="M2 3l2 2 2-2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
             </button>
-            <!-- Agent picker dropdown -->
             <div class="agent-picker" id="agentPicker" hidden></div>
             <button class="ai-send" id="aiSend">
               <svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 12V4M4 8l4-4 4 4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
           </div>
         </div>
-
-        <!-- Session label tab -->
-        <div class="session-tab" id="sessionTab">Yantra</div>
-
       </div>
+
+    </div><!-- /browser-shell -->
+  </div><!-- /canvas -->
+
+  <!-- ── Activity Feed (floating) ───────────────────────────────── -->
+  <div id="activityFeed" hidden>
+    <div class="af-header">
+      <span>Activity Feed</span>
+      <button class="af-close" id="afClose">×</button>
+    </div>
+    <div id="afList">
+      <div class="af-empty">No activity yet. Agent events will appear here.</div>
     </div>
   </div>
 
-  <!-- ── Memory browser panel ─────────────────────────────────── -->
+  <!-- ── Command Palette (Cmd+K) ────────────────────────────────── -->
+  <div id="cmdPaletteOverlay" hidden>
+    <div id="cmdPalette">
+      <input id="cmdInput" placeholder="Type a command or search…" autocomplete="off" spellcheck="false"/>
+      <div id="cmdResults"></div>
+    </div>
+  </div>
+
+  <!-- ── Persona Picker Modal ───────────────────────────────────── -->
+  <div id="personaPickerModal" hidden>
+    <div class="persona-picker-box">
+      <div class="persona-picker-header">
+        <h3>Switch Persona</h3>
+        <button class="modal-close" id="personaPickerClose">×</button>
+      </div>
+      <div class="persona-picker-list" id="personaPickerList"></div>
+    </div>
+  </div>
+
+  <!-- ── Legacy overlays (memory / routines as slide panels) ────── -->
+  <!-- Memory kept as legacy for backward-compat; main view is panelMemory -->
   <div class="rp-overlay" id="memOverlay" hidden>
     <div class="rp-panel">
       <div class="rp-header">
         <span class="rp-title">📚 Memory</span>
-        <div class="mem-search-wrap">
-          <input id="memSearch" class="mem-search" placeholder="Search…" autocomplete="off">
-        </div>
+        <div class="mem-search-wrap"><input id="memSearchLegacy" class="mem-search" placeholder="Search…" autocomplete="off"></div>
         <button class="rp-close-btn" id="memCloseBtn">×</button>
       </div>
-      <div class="rp-list" id="memList"></div>
-      <div class="rp-empty" id="memEmpty" hidden>
+      <div class="rp-list" id="memListLegacy"></div>
+      <div class="rp-empty" id="memEmptyLegacy" hidden>
         <div class="rp-empty-icon">📚</div>
         <div class="rp-empty-title">No memories yet</div>
         <div class="rp-empty-sub">Research results, routine outputs, and notes will appear here.</div>
@@ -164,7 +364,7 @@
     </div>
   </div>
 
-  <!-- ── Routines panel ───────────────────────────────────────── -->
+  <!-- Routines panel (legacy, accessible from Automation panel) -->
   <div class="rp-overlay" id="rpOverlay" hidden>
     <div class="rp-panel">
       <div class="rp-header">
@@ -182,7 +382,7 @@
     </div>
   </div>
 
-  <!-- ── Routine form modal ────────────────────────────────────── -->
+  <!-- ── Routine form modal ─────────────────────────────────────── -->
   <div class="modal-overlay" id="routineModal" hidden>
     <div class="modal modal-lg">
       <div class="modal-header">
@@ -221,52 +421,7 @@
     </div>
   </div>
 
-  <!-- ── Settings modal ────────────────────────────────────────── -->
-  <div class="modal-overlay" id="settingsModal" hidden>
-    <div class="modal">
-      <div class="modal-header">
-        <span class="modal-title">Settings</span>
-        <button class="modal-close" id="settingsModalClose">×</button>
-      </div>
-      <div class="modal-body">
-        <div class="settings-section-title">AI Providers</div>
-        <div class="modal-field">
-          <label class="field-label">Anthropic API Key (Claude)</label>
-          <div class="api-key-wrap">
-            <input id="settingsApiKey" class="field-input" type="password" placeholder="sk-ant-…" autocomplete="off">
-            <button class="api-key-toggle" id="apiKeyToggle">Show</button>
-          </div>
-        </div>
-        <div class="modal-field">
-          <label class="field-label">OpenAI API Key (GPT-4o)</label>
-          <div class="api-key-wrap">
-            <input id="settingsOpenaiKey" class="field-input" type="password" placeholder="sk-…" autocomplete="off">
-            <button class="api-key-toggle" id="openaiKeyToggle">Show</button>
-          </div>
-        </div>
-        <div class="modal-field">
-          <label class="field-label">Preferred Provider</label>
-          <select id="settingsProvider" class="field-input">
-            <option value="anthropic">Claude (auto-fallback to GPT-4o)</option>
-            <option value="openai">GPT-4o (auto-fallback to Claude)</option>
-          </select>
-          <div class="field-hint">Stored locally in ~/.yantra/settings.json</div>
-        </div>
-        <div class="settings-sep"></div>
-        <div class="settings-section-title">Data</div>
-        <div class="settings-actions-row">
-          <button class="settings-danger-btn" id="settingsClearMemory">Clear Memory</button>
-          <button class="settings-danger-btn" id="settingsClearHistory">Clear Chat History</button>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="modal-btn modal-cancel" id="settingsModalCancel">Cancel</button>
-        <button class="modal-btn modal-save"   id="settingsModalSave">Save</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Agent creation modal ──────────────────────────────────── -->
+  <!-- ── Agent creation modal ───────────────────────────────────── -->
   <div class="modal-overlay" id="agentModal" hidden>
     <div class="modal">
       <div class="modal-header">
@@ -314,7 +469,26 @@
     </div>
   </div>
 
-</div>
+  <!-- ── Onboarding (first run) ─────────────────────────────────── -->
+  <div id="onboardingOverlay" hidden>
+    <div class="onboarding-box">
+      <div class="onboarding-logo">⟁</div>
+      <div class="onboarding-title">Welcome to Yantra</div>
+      <div class="onboarding-sub">AI-powered browser with agents, memory, vault, and automation. Add your API key to get started.</div>
+      <div class="modal-field">
+        <label class="field-label">Anthropic API Key (recommended)</label>
+        <input id="onboardingKey" class="onboarding-key-input" type="password" placeholder="sk-ant-…" autocomplete="off">
+      </div>
+      <div class="modal-field">
+        <label class="field-label">OpenAI API Key (optional)</label>
+        <input id="onboardingOpenaiKey" class="onboarding-key-input" type="password" placeholder="sk-…" autocomplete="off">
+      </div>
+      <button id="onboardingSave" class="onboarding-btn">Get Started →</button>
+      <button id="onboardingSkip" class="onboarding-skip">Skip — I'll add a key later in Settings</button>
+    </div>
+  </div>
+
+</div><!-- /app -->
 <script src="renderer.js"></script>
 </body>
 </html>

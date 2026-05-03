@@ -6,7 +6,9 @@
   "scripts": {
     "start": "electron .",
     "build": "electron-builder --mac",
-    "build:dmg": "electron-builder --mac dmg"
+    "build:dmg": "electron-builder --mac dmg",
+    "test:smoke": "node test/smoke.js",
+    "diagnose": "node -e \"const d=require('./main/ai/llmClient');console.log('llmClient loaded OK')\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

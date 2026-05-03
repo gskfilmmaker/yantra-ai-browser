@@ -67,11 +67,22 @@ async function runAgentLoopAnthropic({ event, sessionId, message, history, syste
       messages,
     })
 
+    // Batch text snapshots every 60 ms to avoid IPC flood (O(n²) bytes → O(1))
+    let _snap = '', _snapTimer = null
+    const _flushSnap = () => {
+      if (_snap && !event.sender.isDestroyed())
+        event.sender.send('agent-event', { sessionId, type: 'text', text: _snap })
+      _snapTimer = null
+    }
     stream.on('text', (_, snapshot) => {
-      event.sender.send('agent-event', { sessionId, type: 'text', text: snapshot })
+      _snap = snapshot
+      if (!_snapTimer) _snapTimer = setTimeout(_flushSnap, 60)
     })
 
     const response = await stream.finalMessage()
+    // Flush any buffered text after stream ends
+    clearTimeout(_snapTimer)
+    _flushSnap()
 
     if (response.stop_reason === 'end_turn') {
       messages.push({ role: 'assistant', content: response.content })
@@ -124,6 +135,13 @@ async function runAgentLoopOpenAI({ event, sessionId, message, history, systemPr
     let textSoFar   = ''
     let finishReason = null
     const tcMap     = {}
+    // Batch OpenAI text deltas every 60 ms
+    let _oaiTimer = null
+    const _flushOai = () => {
+      if (textSoFar && !event.sender.isDestroyed())
+        event.sender.send('agent-event', { sessionId, type: 'text', text: textSoFar })
+      _oaiTimer = null
+    }
 
     for await (const chunk of stream) {
       const delta = chunk.choices[0]?.delta
@@ -132,7 +150,7 @@ async function runAgentLoopOpenAI({ event, sessionId, message, history, systemPr
 
       if (delta?.content) {
         textSoFar += delta.content
-        event.sender.send('agent-event', { sessionId, type: 'text', text: textSoFar })
+        if (!_oaiTimer) _oaiTimer = setTimeout(_flushOai, 60)
       }
 
       if (delta?.tool_calls) {
@@ -144,6 +162,10 @@ async function runAgentLoopOpenAI({ event, sessionId, message, history, systemPr
         }
       }
     }
+
+    // Flush remaining buffered text
+    clearTimeout(_oaiTimer)
+    _flushOai()
 
     const toolCalls = Object.values(tcMap)
 

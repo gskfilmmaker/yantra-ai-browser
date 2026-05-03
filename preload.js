@@ -82,6 +82,30 @@ contextBridge.exposeInMainWorld('yantra', {
     set: (k, v)   => ipcRenderer.invoke('settings:set', k, v),
   },
   on: {
-    routineEvent: (cb) => ipcRenderer.on('routine-event', (_, d) => cb(d)),
+    routineEvent:  (cb) => ipcRenderer.on('routine-event',   (_, d) => cb(d)),
+    autonomyEvent: (cb) => ipcRenderer.on('autonomy-event',  (_, d) => cb(d)),
+  },
+
+  vault: {
+    list:   ()             => ipcRenderer.invoke('vault:list'),
+    get:    (site)         => ipcRenderer.invoke('vault:get', site),
+    save:   (data)         => ipcRenderer.invoke('vault:save', data),
+    remove: (id)           => ipcRenderer.invoke('vault:remove', id),
+  },
+
+  personas: {
+    list:      ()                    => ipcRenderer.invoke('persona:list'),
+    getActive: ()                    => ipcRenderer.invoke('persona:getActive'),
+    switch:    (nameOrId)            => ipcRenderer.invoke('persona:switch', nameOrId),
+    teach:     (nameOrId, insight)   => ipcRenderer.invoke('persona:teach', { nameOrId, insight }),
+    insights:  (nameOrId)            => ipcRenderer.invoke('persona:insights', nameOrId),
+    create:    (cfg)                 => ipcRenderer.invoke('persona:create', cfg),
+  },
+
+  autonomy: {
+    listSchedules:  ()   => ipcRenderer.invoke('autonomy:listSchedules'),
+    listMonitors:   ()   => ipcRenderer.invoke('autonomy:listMonitors'),
+    cancelSchedule: (id) => ipcRenderer.invoke('autonomy:cancelSchedule', id),
+    cancelMonitor:  (id) => ipcRenderer.invoke('autonomy:cancelMonitor', id),
   },
 })
