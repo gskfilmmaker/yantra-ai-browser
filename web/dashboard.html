@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YANTRA — Dashboard Preview</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body class="dashboard-page">
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo"><span class="logo-mark">Y</span><span class="logo-text">YANTRA</span></a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="#" class="active">Dashboard</a>
+      <a href="https://github.com/gskfilmmaker/yantra-ai-browser" class="btn-nav">GitHub</a>
+    </div>
+  </div>
+</nav>
+<div class="dash-shell">
+  <aside class="dash-sidebar">
+    <div class="ds-section">
+      <div class="ds-label">Navigation</div>
+      <a href="#" class="ds-item active" data-panel="home"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Home</a>
+      <a href="#" class="ds-item" data-panel="agents"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>Agents</a>
+      <a href="#" class="ds-item" data-panel="memory"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>Memory</a>
+      <a href="#" class="ds-item" data-panel="vault"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Vault</a>
+      <a href="#" class="ds-item" data-panel="automation"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Automation</a>
+    </div>
+    <div class="ds-persona">
+      <div class="dsp-avatar">G</div>
+      <div class="dsp-info"><div class="dsp-name">Genius GSK</div><div class="dsp-role">Active persona</div></div>
+    </div>
+  </aside>
+  <main class="dash-main">
+    <div class="dash-panel active" id="panel-home">
+      <div class="dp-header"><h1>Good morning</h1><div class="dp-meta">Sunday · May 4 · Everything is running smoothly</div></div>
+      <div class="stat-row">
+        <div class="stat-card"><div class="stat-num">4</div><div class="stat-label">Active agents</div></div>
+        <div class="stat-card"><div class="stat-num">142</div><div class="stat-label">Memory items</div></div>
+        <div class="stat-card"><div class="stat-num">3</div><div class="stat-label">Routines scheduled</div></div>
+        <div class="stat-card accent-stat"><div class="stat-num">28</div><div class="stat-label">Tasks completed today</div></div>
+      </div>
+      <div class="dp-section-title">Recent activity</div>
+      <div class="activity-list">
+        <div class="act-item"><div class="act-icon green-dot"></div><div class="act-body"><div class="act-title">Research Agent completed: "AI market trends 2025"</div><div class="act-time">2 hours ago</div></div></div>
+        <div class="act-item"><div class="act-icon blue-dot"></div><div class="act-body"><div class="act-title">Routine "Morning digest" ran successfully</div><div class="act-time">6 hours ago</div></div></div>
+        <div class="act-item"><div class="act-icon red-dot"></div><div class="act-body"><div class="act-title">Saved 8 memory items from browsing session</div><div class="act-time">Yesterday</div></div></div>
+        <div class="act-item"><div class="act-icon yellow-dot"></div><div class="act-body"><div class="act-title">Persona switched to "Researcher"</div><div class="act-time">Yesterday</div></div></div>
+      </div>
+      <div class="dp-section-title">Quick actions</div>
+      <div class="quick-grid">
+        <button class="quick-btn" onclick="switchPanel('agents')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>New Agent</button>
+        <button class="quick-btn" onclick="switchPanel('automation')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>New Routine</button>
+        <button class="quick-btn" onclick="switchPanel('vault')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Add Credential</button>
+        <button class="quick-btn" onclick="switchPanel('memory')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search Memory</button>
+      </div>
+    </div>
+    <div class="dash-panel" id="panel-agents">
+      <div class="dp-header"><h1>Agents</h1><button class="btn-sm-accent">+ New agent</button></div>
+      <div class="agent-list">
+        <div class="agent-card active-agent"><div class="ag-avatar red">R</div><div class="ag-info"><div class="ag-name">Research Agent</div><div class="ag-desc">Deep web research, summarisation, citation extraction</div><div class="ag-tools"><span class="tool-tag">browser</span><span class="tool-tag">memory</span><span class="tool-tag">content</span></div></div><div class="ag-badge active">Active</div></div>
+        <div class="agent-card"><div class="ag-avatar blue">A</div><div class="ag-info"><div class="ag-name">Automation Agent</div><div class="ag-desc">Form filling, multi-step browser workflows, scheduling</div><div class="ag-tools"><span class="tool-tag">browser</span><span class="tool-tag">automation</span><span class="tool-tag">vault</span></div></div><div class="ag-badge">Ready</div></div>
+        <div class="agent-card"><div class="ag-avatar green">W</div><div class="ag-info"><div class="ag-name">Writer Agent</div><div class="ag-desc">Content generation, editing, tone adjustment</div><div class="ag-tools"><span class="tool-tag">content</span><span class="tool-tag">memory</span></div></div><div class="ag-badge">Ready</div></div>
+        <div class="agent-card"><div class="ag-avatar purple">O</div><div class="ag-info"><div class="ag-name">Orchestrator</div><div class="ag-desc">Coordinates multi-agent workflows and task delegation</div><div class="ag-tools"><span class="tool-tag">orchestration</span><span class="tool-tag">cognitive</span></div></div><div class="ag-badge">Ready</div></div>
+      </div>
+    </div>
+    <div class="dash-panel" id="panel-memory">
+      <div class="dp-header"><h1>Memory</h1><div class="dp-search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Search memory…" oninput="filterMemory(this.value)" /></div></div>
+      <div class="memory-list" id="memoryList">
+        <div class="mem-item"><div class="mem-type research">research</div><div class="mem-body"><div class="mem-title">AI market trends 2025</div><div class="mem-snippet">The AI market is expected to reach $407B by 2027, with agentic AI and multimodal models leading growth…</div><div class="mem-meta">yantra.ai · 2h ago</div></div></div>
+        <div class="mem-item"><div class="mem-type page">page</div><div class="mem-body"><div class="mem-title">Anthropic API rate limits</div><div class="mem-snippet">claude-sonnet-4-6: 4000 RPM, 400K TPM. claude-opus-4: 1000 RPM, 200K TPM…</div><div class="mem-meta">docs.anthropic.com · Yesterday</div></div></div>
+        <div class="mem-item"><div class="mem-type note">note</div><div class="mem-body"><div class="mem-title">Project architecture decisions</div><div class="mem-snippet">Using vanilla JS renderer to avoid framework overhead in Electron. BrowserView positioned via IPC…</div><div class="mem-meta">Manual · 2 days ago</div></div></div>
+        <div class="mem-item"><div class="mem-type research">research</div><div class="mem-body"><div class="mem-title">Electron security best practices</div><div class="mem-snippet">contextIsolation must be enabled. nodeIntegration must be false. Use contextBridge for IPC…</div><div class="mem-meta">electronjs.org · 3 days ago</div></div></div>
+      </div>
+    </div>
+    <div class="dash-panel" id="panel-vault">
+      <div class="dp-header"><h1>Credential Vault</h1><button class="btn-sm-accent">+ Add credential</button></div>
+      <div class="vault-notice"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>All credentials are AES-256-GCM encrypted on your device. This is a preview only — manage credentials in the desktop app.</div>
+      <div class="vault-list">
+        <div class="vault-item"><div class="vault-domain">github.com</div><div class="vault-user">gskfilmmaker</div><div class="vault-actions"><button class="vault-btn">Copy password</button></div></div>
+        <div class="vault-item"><div class="vault-domain">anthropic.com</div><div class="vault-user">gskproductionsinc@gmail.com</div><div class="vault-actions"><button class="vault-btn">Copy password</button></div></div>
+        <div class="vault-item"><div class="vault-domain">vercel.com</div><div class="vault-user">gskproductionsinc-4238</div><div class="vault-actions"><button class="vault-btn">Copy password</button></div></div>
+      </div>
+    </div>
+    <div class="dash-panel" id="panel-automation">
+      <div class="dp-header"><h1>Automation</h1><button class="btn-sm-accent">+ New routine</button></div>
+      <div class="dp-section-title">Scheduled routines</div>
+      <div class="routine-list">
+        <div class="routine-card"><div class="routine-status on"></div><div class="routine-info"><div class="routine-name">Morning digest</div><div class="routine-desc">Summarise top news from HN, TechCrunch, and Anthropic blog</div><div class="routine-schedule">Every day at 08:00</div></div><button class="routine-run">▶ Run now</button></div>
+        <div class="routine-card"><div class="routine-status on"></div><div class="routine-info"><div class="routine-name">Weekly research brief</div><div class="routine-desc">Compile all research memories from the past 7 days into a brief</div><div class="routine-schedule">Every Monday at 09:00</div></div><button class="routine-run">▶ Run now</button></div>
+        <div class="routine-card"><div class="routine-status off"></div><div class="routine-info"><div class="routine-name">Price monitor</div><div class="routine-desc">Check product prices and alert on 10%+ drops</div><div class="routine-schedule">Paused</div></div><button class="routine-run" disabled>▶ Run now</button></div>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

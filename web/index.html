@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YANTRA — AI Operating Browser</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">
+      <span class="logo-mark">Y</span>
+      <span class="logo-text">YANTRA</span>
+    </a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="#download" class="btn-nav">Download Mac App</a>
+    </div>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-inner">
+    <div class="hero-badge">AI Operating Browser · Built for macOS</div>
+    <h1 class="hero-title">
+      Browse. Think. Act.<br/>
+      <span class="accent">One unified AI.</span>
+    </h1>
+    <p class="hero-sub">
+      YANTRA is a world-class AI browser where chat, automation, agents, memory,
+      routines, vault, and personas feel like a single product — not bolted-on features.
+    </p>
+    <div class="hero-cta">
+      <a href="#download" class="btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+        Download for Mac
+      </a>
+      <a href="dashboard.html" class="btn-ghost">See the Dashboard →</a>
+    </div>
+    <div class="hero-meta">Free during beta · Anthropic &amp; OpenAI supported · No account needed</div>
+    <div class="app-preview">
+      <div class="preview-chrome">
+        <div class="chrome-dots"><span></span><span></span><span></span></div>
+        <div class="chrome-bar">yantra://home</div>
+      </div>
+      <div class="preview-body">
+        <div class="preview-sidebar">
+          <div class="ps-logo">Y</div>
+          <div class="ps-items">
+            <div class="ps-item active"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg></div>
+            <div class="ps-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+            <div class="ps-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+            <div class="ps-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+          </div>
+        </div>
+        <div class="preview-content">
+          <div class="preview-panel">
+            <div class="pp-header">
+              <div class="pp-title">Good morning</div>
+              <div class="pp-sub">4 agents ready · 2 routines scheduled</div>
+            </div>
+            <div class="pp-cards">
+              <div class="pp-card accent-card"><div class="card-label">AI Chat</div><div class="card-value">Ask anything about what you're browsing</div></div>
+              <div class="pp-card"><div class="card-label">Memory</div><div class="card-value">142 items stored</div></div>
+              <div class="pp-card"><div class="card-label">Last run</div><div class="card-value">Summarise news · 2h ago</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="preview-chat">
+          <div class="pc-msg ai"><div class="pc-bubble">I've summarised 8 articles from your reading list. Want me to draft a brief?</div></div>
+          <div class="pc-msg user"><div class="pc-bubble">Yes, and save it to memory.</div></div>
+          <div class="pc-input"><input type="text" placeholder="Ask YANTRA anything…" disabled /></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="section-inner">
+    <div class="section-label">Everything built in</div>
+    <h2 class="section-title">Not a plugin. An OS for browsing.</h2>
+    <p class="section-sub">Every feature is first-class — not an afterthought tucked in a settings menu.</p>
+    <div class="feature-grid">
+      <div class="feat-card"><div class="feat-icon red"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><h3>Streaming AI Chat</h3><p>Anthropic Claude &amp; OpenAI GPT-4 with full context of every page you visit. Plans, multi-step reasoning, tool use — all visible.</p></div>
+      <div class="feat-card"><div class="feat-icon blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div><h3>Multi-Agent System</h3><p>Create specialised agents for research, automation, writing, or code. Each agent has its own tools, persona, and memory scope.</p></div>
+      <div class="feat-card"><div class="feat-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><h3>Automation Routines</h3><p>Schedule multi-step browser automations. Monitor conditions. Run workflows while you sleep. No coding required.</p></div>
+      <div class="feat-card"><div class="feat-icon yellow"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><h3>Credential Vault</h3><p>AES-256-GCM encrypted credential storage on-device. YANTRA can autofill forms — credentials never leave your machine.</p></div>
+      <div class="feat-card"><div class="feat-icon purple"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><h3>Persona Engine</h3><p>Switch AI personalities — Genius, Researcher, Creative, or create your own. Each persona learns from your interactions.</p></div>
+      <div class="feat-card"><div class="feat-icon orange"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div><h3>Persistent Memory</h3><p>Every research session, page analysis, and insight is saved locally. Search across everything with semantic understanding.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="how" id="how">
+  <div class="section-inner">
+    <div class="section-label">How it works</div>
+    <h2 class="section-title">One app. Everything connected.</h2>
+    <div class="how-steps">
+      <div class="how-step"><div class="step-num">01</div><div class="step-body"><h3>Browse normally</h3><p>YANTRA is a full Chromium browser. Open any site, log in, navigate — just like Chrome. The AI watches context but never sends data without you asking.</p></div></div>
+      <div class="how-step"><div class="step-num">02</div><div class="step-body"><h3>Ask in natural language</h3><p>Press <kbd>⌘K</kbd> to open the command palette or click the chat panel. Ask anything about the page, the web, or your memory.</p></div></div>
+      <div class="how-step"><div class="step-num">03</div><div class="step-body"><h3>Automate what repeats</h3><p>Turn any interaction into a routine. Set a schedule or a condition trigger. YANTRA runs it autonomously and posts results to your activity feed.</p></div></div>
+      <div class="how-step"><div class="step-num">04</div><div class="step-body"><h3>Everything stays local</h3><p>Your credentials, memory, and chat history live in <code>~/.yantra/</code> on your Mac. No account required. No data leaves your machine without your consent.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="download" id="download">
+  <div class="section-inner download-inner">
+    <div class="dl-left">
+      <h2>Ready to browse smarter?</h2>
+      <p>Download the Mac app and add your Anthropic or OpenAI API key. That's it — no account, no subscription needed during beta.</p>
+      <div class="dl-actions">
+        <a href="https://github.com/gskfilmmaker/yantra-ai-browser" class="btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          Get on GitHub
+        </a>
+        <div class="dl-note">macOS 12+ · Apple Silicon &amp; Intel · ~45 MB</div>
+      </div>
+    </div>
+    <div class="dl-right">
+      <div class="req-card">
+        <div class="req-title">Requirements</div>
+        <ul>
+          <li>macOS 12 Monterey or later</li>
+          <li>Anthropic API key <em>or</em> OpenAI API key</li>
+          <li>~200 MB disk space</li>
+          <li>Internet connection for AI features</li>
+        </ul>
+        <div class="req-title" style="margin-top:16px">Setup in 60 seconds</div>
+        <ol>
+          <li>Download and open the <code>.dmg</code></li>
+          <li>Drag YANTRA to Applications</li>
+          <li>Open YANTRA → Settings → paste your API key</li>
+          <li>Start browsing with AI</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-logo"><span class="logo-mark small">Y</span><span>YANTRA</span></div>
+    <div class="footer-links">
+      <a href="https://github.com/gskfilmmaker/yantra-ai-browser">GitHub</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="https://github.com/gskfilmmaker/yantra-ai-browser/issues">Issues</a>
+    </div>
+    <div class="footer-copy">Built with Claude · Local-first · Open source</div>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
