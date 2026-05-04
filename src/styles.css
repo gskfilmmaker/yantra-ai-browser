@@ -492,27 +492,29 @@ select option { background: var(--surface2); color: var(--text) }
 /* === CONVERSATION CARDS =========================================== */
 .card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--r2);
-  padding: 12px 14px; animation: fade-in .15s ease;
+  padding: 14px 16px; animation: fade-in .15s ease;
 }
 .card-user { display: flex; justify-content: flex-end; background: none; border: none; padding: 2px 0 }
 .card-user-bubble {
   background: var(--accentd); border: 1px solid var(--accentd); border-radius: 14px 14px 4px 14px;
-  padding: 8px 14px; font-size: 13px; color: var(--text); max-width: 78%; word-break: break-word;
+  padding: 9px 15px; font-size: 14px; color: var(--text); max-width: 78%; word-break: break-word;
 }
-.card-text { font-size: 13px; line-height: 1.6; color: var(--text); word-break: break-word }
+.card-text { font-size: 14.5px; line-height: 1.75; color: var(--text); word-break: break-word }
+.card-text br + br { display: block; margin-top: 6px; content: '' }
 .card-text strong { color: var(--text); font-weight: 600 }
+.card-text em { color: var(--text2) }
 .card-text code {
   background: var(--surface3); border: 1px solid var(--border); border-radius: 4px;
-  padding: 1px 5px; font-size: 12px; font-family: 'SF Mono','Fira Code',monospace;
+  padding: 2px 6px; font-size: 13px; font-family: 'SF Mono','Fira Code',monospace;
 }
 .card-text pre {
   background: var(--surface3); border: 1px solid var(--border); border-radius: var(--r);
-  padding: 10px 12px; overflow-x: auto; margin: 8px 0;
+  padding: 12px 14px; overflow-x: auto; margin: 10px 0;
 }
-.card-text pre code { background: none; border: none; padding: 0; font-size: 12px; font-family: 'SF Mono','Fira Code',monospace }
-.card-text ul { margin-left: 18px }
-.card-text li { margin: 2px 0 }
-.card-text a { color: var(--accent) }
+.card-text pre code { background: none; border: none; padding: 0; font-size: 13px; font-family: 'SF Mono','Fira Code',monospace }
+.card-text ul { margin: 6px 0 6px 20px; display: flex; flex-direction: column; gap: 4px }
+.card-text li { margin: 0; line-height: 1.65 }
+.card-text a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px }
 .card-tool {
   display: flex; align-items: center; gap: 10px; padding: 8px 12px;
   border-radius: var(--r2); background: var(--surface); border: 1px solid var(--border);
