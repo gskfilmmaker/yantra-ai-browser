@@ -1,7 +1,8 @@
 'use strict'
 
 let _win  = null
-let _busy = false   // prevent re-entrant trigger runs
+let _busy = false           // prevent re-entrant trigger runs
+const _cooldowns = new Map() // routineId → timestamp of last run
 
 function init(win) {
   _win = win
@@ -36,9 +37,15 @@ async function _onTabEvent(channel, data, rm) {
   const matching = rm.evaluateTriggers(event)
   if (!matching.length) return
 
+  const COOLDOWN_MS = 10_000 // same routine cannot auto-re-trigger within 10s
+  const now = Date.now()
+  const ready = matching.filter(r => (now - (_cooldowns.get(r.id) || 0)) > COOLDOWN_MS)
+  if (!ready.length) return
+
   _busy = true
   try {
-    for (const routine of matching) {
+    for (const routine of ready) {
+      _cooldowns.set(routine.id, Date.now())
       _win.webContents.send('routine-event', { type: 'start', routineId: routine.id, routineName: routine.name })
       try {
         const result = await rm.runRoutine(routine.id, { tabId: event.tabId })

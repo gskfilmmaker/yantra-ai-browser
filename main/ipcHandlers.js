@@ -167,16 +167,18 @@ function register() {
         }
       } catch { /* non-fatal */ }
 
-      // 7. Run the streaming agent loop
+      // 7. Run the streaming agent loop (90s hard timeout)
       const priorHistory = sessionHistory.get(sessionId) || []
-      const finalMessages = await llmClient.runAgentLoop({
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timed out after 90 seconds')), 90_000))
+      const finalMessages = await Promise.race([timeout, llmClient.runAgentLoop({
         event,
         sessionId,
         message:      fullMessage,
         history:      priorHistory,
         systemPrompt,
         tools,
-      })
+      })])
 
       // 8. Persist conversation
       sessionHistory.set(sessionId, finalMessages)
