@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "name": "yantra",
   "rootDirectory": "web",
   "rewrites": [
     { "source": "/dashboard", "destination": "/dashboard.html" },
