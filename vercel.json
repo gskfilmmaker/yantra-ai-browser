@@ -1,18 +1,12 @@
 {
   "version": 2,
-  "rootDirectory": "web",
-  "rewrites": [
-    { "source": "/dashboard", "destination": "/dashboard.html" },
-    { "source": "/",          "destination": "/index.html" }
+  "builds": [
+    { "src": "web/**/*", "use": "@vercel/static" }
   ],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options",        "value": "DENY" },
-        { "key": "X-XSS-Protection",       "value": "1; mode=block" }
-      ]
-    }
+  "routes": [
+    { "src": "/dashboard", "dest": "/web/dashboard.html" },
+    { "src": "/styles.css", "dest": "/web/styles.css" },
+    { "src": "/app.js",    "dest": "/web/app.js" },
+    { "src": "/",         "dest": "/web/index.html" }
   ]
 }
