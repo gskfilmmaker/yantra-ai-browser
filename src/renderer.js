@@ -1537,6 +1537,7 @@ function finishRun() {
   isRunning = false
   $('aiSend').disabled  = false
   $('aiInput').disabled = false
+  $('aiInput').focus()
 }
 
 // ─── Send message ─────────────────────────────────────────────────────────────
@@ -1581,11 +1582,13 @@ function renderMd(raw) {
   t = t.replace(/```([\s\S]*?)```/g, (_, c) => `<pre><code>${c}</code></pre>`)
   t = t.replace(/`([^`\n]+)`/g, '<code>$1</code>')
   t = t.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+  t = t.replace(/\*\*/g, '')                                   // strip orphaned ** (truncated text)
   t = t.replace(/\*([^*\n]+)\*/g, '<em>$1</em>')
-  t = t.replace(/^#{1,3} (.+)$/gm, '<strong>$1</strong>')
-  t = t.replace(/^[-•] (.+)$/gm, '<li>$1</li>')
+  t = t.replace(/^#{1,6} (.+)$/gm, '<strong>$1</strong>')
+  t = t.replace(/^[-•*] (.+)$/gm, '<li>$1</li>')
   t = t.replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>')
   t = t.replace(/(https?:\/\/[^\s<"]+)/g, '<a href="#" onclick="return false" title="$1">$1</a>')
+  t = t.replace(/\n\n/g, '<br><br>')
   t = t.replace(/\n/g, '<br>')
   return t
 }
