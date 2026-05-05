@@ -18,9 +18,16 @@ async function buildContext({ agent, userPrompt }) {
   }
 
   // ── 2. Relevant recent memory ─────────────────────────────────────────────
-  const recent = memoryStore.getHistory(4)
-  if (recent.length) {
-    blocks.memory = recent
+  const recent = memoryStore.getHistory(8)
+  const meaningful = recent.filter(m => {
+    const result = (m.result || '').trim()
+    // Skip trivial/corrupted entries: agent-switch confirmations, very short results
+    if (result.length < 60) return false
+    if (/^switched to (agent|persona)/i.test(result)) return false
+    return true
+  }).slice(0, 4)
+  if (meaningful.length) {
+    blocks.memory = meaningful
       .map(m => `${m.title || m.type}: ${(m.result || '').slice(0, 200)}`)
       .join('\n')
   }
