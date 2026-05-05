@@ -34,11 +34,27 @@ const sessionHistory = new Map()
 
 const SESSIONS_FILE = path.join(os.homedir(), '.yantra', 'sessions.json')
 
+function _isValidHistory(msgs) {
+  if (!Array.isArray(msgs)) return false
+  // Reject sessions that contain OpenAI-format role:system messages
+  if (msgs.some(m => m.role === 'system')) return false
+  // Reject sessions where assistant only said trivial things like "Switched to agent"
+  const asstMsgs = msgs.filter(m => m.role === 'assistant')
+  if (asstMsgs.length && asstMsgs.every(m => {
+    const text = typeof m.content === 'string' ? m.content
+      : Array.isArray(m.content) ? (m.content.find(b => b.type === 'text')?.text || '') : ''
+    return /^switched to (agent|persona)/i.test(text.trim()) || text.trim().length < 10
+  })) return false
+  return true
+}
+
 function loadSessions() {
   try {
     if (fs.existsSync(SESSIONS_FILE)) {
       const data = JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf8'))
-      for (const [id, msgs] of Object.entries(data)) sessionHistory.set(id, msgs)
+      for (const [id, msgs] of Object.entries(data)) {
+        if (_isValidHistory(msgs)) sessionHistory.set(id, msgs)
+      }
     }
   } catch { /* ignore */ }
 }
@@ -184,12 +200,14 @@ function register() {
       sessionHistory.set(sessionId, finalMessages)
       saveSessions()
 
-      // 9. Auto-save research result to memory
+      // 9. Auto-save research result to memory (skip trivial/corrupted responses)
       const lastAsst = [...finalMessages].reverse().find(m => m.role === 'assistant')
       const lastText = Array.isArray(lastAsst?.content)
         ? (lastAsst.content.find(b => b.type === 'text')?.text || '')
-        : ''
-      if (lastText) {
+        : (typeof lastAsst?.content === 'string' ? lastAsst.content : '')
+      const isTrivial = lastText.trim().length < 80 ||
+        /^switched to (agent|persona)/i.test(lastText.trim())
+      if (lastText && !isTrivial) {
         const tab = tabManager.getActiveTab()
         memoryStore.save({
           type:    'research',
