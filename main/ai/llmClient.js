@@ -15,6 +15,7 @@ function toOpenAITools(anthropicTools) {
 function toOpenAIMessages(systemPrompt, anthropicMessages) {
   const result = [{ role: 'system', content: systemPrompt }]
   for (const msg of anthropicMessages) {
+    if (msg.role === 'system') continue  // already injected above; skip duplicates
     if (typeof msg.content === 'string') {
       result.push({ role: msg.role, content: msg.content })
       continue
@@ -56,7 +57,17 @@ function toOpenAIMessages(systemPrompt, anthropicMessages) {
 async function runAgentLoopAnthropic({ event, sessionId, message, history, systemPrompt, tools }) {
   const Anthropic = require('@anthropic-ai/sdk')
   const anthropic = new Anthropic()
-  const messages  = [...(history || []), { role: 'user', content: message }]
+
+  // Strip any OpenAI-format entries (role:'system', role:'tool', content:null)
+  // that may have leaked into history via provider fallback
+  const safeHistory = (history || []).filter(m => {
+    if (m.role !== 'user' && m.role !== 'assistant') return false
+    if (m.content === null || m.content === undefined) return false
+    if (typeof m.content === 'string') return m.content.length > 0
+    if (Array.isArray(m.content)) return m.content.length > 0
+    return false
+  })
+  const messages = [...safeHistory, { role: 'user', content: message }]
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
     const stream = anthropic.messages.stream({
@@ -189,7 +200,8 @@ async function runAgentLoopOpenAI({ event, sessionId, message, history, systemPr
     }
   }
 
-  return messages
+  // Strip the leading system message before storing — Anthropic loop can't use it
+  return messages.filter(m => m.role !== 'system')
 }
 
 // ── Provider router with auto-fallback ────────────────────────────────────────
