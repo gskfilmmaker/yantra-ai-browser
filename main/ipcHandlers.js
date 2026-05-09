@@ -183,10 +183,10 @@ function register() {
         }
       } catch { /* non-fatal */ }
 
-      // 7. Run the streaming agent loop (90s hard timeout)
+      // 7. Run the streaming agent loop — 5 min timeout for complex automations
       const priorHistory = sessionHistory.get(sessionId) || []
       const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timed out after 90 seconds')), 90_000))
+        setTimeout(() => reject(new Error('Request timed out after 5 minutes')), 300_000))
       const finalMessages = await Promise.race([timeout, llmClient.runAgentLoop({
         event,
         sessionId,
