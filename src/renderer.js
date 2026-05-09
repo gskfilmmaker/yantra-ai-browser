@@ -11,6 +11,7 @@ let activePersona = null
 
 const convos = {}
 let _pendingTextRender = false  // batched DOM update flag
+let _workingCardId    = null   // single collapsed "thinking" indicator
 
 // ─── Utility ──────────────────────────────────────────────────────────────────
 
@@ -100,6 +101,7 @@ $('onboardingSkip').addEventListener('click', () => {
 api.on.tabSwitched(({ tabId, tabs: t }) => {
   tabs = t; activeTabId = tabId
   if (!convos[tabId]) convos[tabId] = { items: [] }
+  _workingCardId = null; curTextId = null
   renderTabs()
   syncURL()
   syncNavButtons(t.find(tab => tab.id === tabId))
@@ -1366,56 +1368,19 @@ function cardHTML(item) {
     case 'text':
       return `<div class="card"><div class="card-text">${renderMd(item.text)}</div></div>`
 
-    case 'plan': {
-      const steps = (item.steps || []).map((s, i) =>
-        `<li class="plan-step"><span class="plan-step-num">${i + 1}</span><span>${esc(s)}</span></li>`
-      ).join('')
-      return `<div class="card card-plan">
-        <div class="plan-header">
-          <span class="plan-icon">🎯</span>
-          <span class="plan-title">${esc(item.title || 'Multi-step plan')}</span>
-          <span class="plan-badge">Plan</span>
-        </div>
-        <ol class="plan-steps">${steps}</ol>
-      </div>`
-    }
+    case 'plan':
+      // Plans are shown only in the activity feed, not the main chat
+      return ''
 
-    case 'tool_call': {
-      const icons = {
-        web_search: '🔍', fetch_webpage: '📄', get_current_page: '🖥️',
-        open_url: '🔗', get_all_tabs: '📑', save_note: '💾',
-        extractTable: '📊', exportCSV: '📁', extractEntities: '🏷️',
-        generateReport: '📝', exportPDF: '🖨️', getSelectedText: '✂️',
-        getPageStructure: '🗺️', clickElement: '👆', typeInField: '⌨️',
-        pressKey: '⌨️', scrollPage: '📜', waitForElement: '⏳',
-        captureScreenshot: '📸', cogitate: '🧠', orchestrate: '🎭',
-        saveCredential: '🔒', scheduleTask: '🕐', watchPage: '👁',
-        switchPersona: '🧠',
-      }
-      const icon  = icons[item.toolName] || '⚙️'
-      const title = item.toolName === 'web_search'        ? `Searching: "${item.toolInput?.query}"`
-                  : item.toolName === 'get_current_page'  ? 'Reading current page…'
-                  : item.toolName === 'captureScreenshot' ? 'Taking screenshot…'
-                  : item.toolName === 'cogitate'          ? `Thinking: "${(item.toolInput?.request || '').slice(0, 50)}"`
-                  : item.toolName === 'saveCredential'    ? `Saving credential for ${item.toolInput?.site}`
-                  : item.toolName === 'scheduleTask'      ? `Scheduling: ${item.toolInput?.name}`
-                  : item.toolName === 'watchPage'         ? `Monitoring: ${(item.toolInput?.url || '').slice(0, 40)}`
-                  : item.toolName === 'clickElement'      ? `Clicking: "${item.toolInput?.text || item.toolInput?.selector}"`
-                  : item.toolName === 'typeInField'       ? `Typing into field…`
-                  : `${item.toolName}${item.toolInput?.url ? `: ${(item.toolInput.url || '').slice(0, 40)}` : ''}`
-      const st    = item.status || 'running'
-      const badge = st === 'running' ? '<span class="spinner"></span> Working…'
-                  : st === 'done'    ? '✓ Done' : '✗ Error'
-      const screenshotHtml = item.screenshot ? `<img class="card-screenshot" src="${item.screenshot}" alt="Screenshot">` : ''
-      return `<div class="card-tool ${st}">
-        <span class="ct-icon">${icon}</span>
-        <div class="ct-body">
-          <div class="ct-title">${esc(title)}</div>
-          ${item.summary && !item.screenshot ? `<div class="ct-sub">${esc(item.summary)}</div>` : ''}
-        </div>
-        <div class="ct-badge ${st}">${badge}</div>
-      </div>${screenshotHtml}`
-    }
+    case 'thinking':
+      return `<div class="card-thinking"><div class="thinking-dots"><span></span><span></span><span></span></div></div>`
+
+    case 'screenshot':
+      return `<div class="card" style="padding:8px"><img class="card-screenshot" src="${esc(item.src)}" alt="Screenshot"></div>`
+
+    case 'tool_call':
+      // Legacy — not shown in chat; activity feed handles this
+      return ''
 
     case 'feedback':
       return `<div class="card card-feedback">
@@ -1460,46 +1425,51 @@ function scrollThread() {
 const toolMap = {}
 let curTextId = null
 
+function _removeWorkingCard() {
+  if (!_workingCardId) return
+  const c = convo()
+  c.items = c.items.filter(i => i.id !== _workingCardId)
+  const el = document.getElementById(`card-${_workingCardId}`)
+  if (el) el.remove()
+  _workingCardId = null
+}
+
 function handleAgentEvent(ev) {
   if (ev.sessionId !== activeTabId) return
 
   switch (ev.type) {
     case 'plan':
-      addCard({ id: `plan-${Date.now()}`, type: 'plan', title: ev.title, steps: ev.steps })
+      // Silently log to activity feed; don't clutter the chat
+      addActivityItem('🎯', `Plan: ${ev.title || 'Multi-step'}`)
       break
 
     case 'tool_call': {
-      const item = { id: `tc-${ev.toolId}`, type: 'tool_call',
-        toolName: ev.toolName, toolInput: ev.toolInput, status: 'running' }
-      toolMap[ev.toolId] = item.id
       curTextId = null
-      addCard(item)
+      if (!_workingCardId) {
+        const item = { id: `thinking-${Date.now()}`, type: 'thinking' }
+        _workingCardId = item.id
+        addCard(item)
+      }
+      toolMap[ev.toolId] = _workingCardId
       addActivityItem(
         ev.toolName === 'web_search' ? '🔍' : ev.toolName === 'captureScreenshot' ? '📸' : '⚙️',
-        `Tool: ${ev.toolName}`
+        `${ev.toolName}${ev.toolInput?.query ? ': ' + ev.toolInput.query : ''}`
       )
       break
     }
 
     case 'tool_result': {
-      const id   = toolMap[ev.toolId]
-      const item = convo().items.find(i => i.id === id)
-      if (item) {
-        item.status = 'done'
-        if (ev.result && ev.result.startsWith('data:image/')) {
-          item.screenshot = ev.result
-          item.summary    = 'Screenshot captured'
-        } else {
-          const line = (ev.result || '').split('\n').find(l => l.trim()) || ''
-          item.summary = line.slice(0, 100) + (line.length > 100 ? '…' : '')
-        }
-        patchCard(id); scrollThread()
+      // Screenshots shown inline; everything else stays silent
+      if (ev.result && ev.result.startsWith('data:image/')) {
+        _removeWorkingCard()
+        addCard({ id: `ss-${Date.now()}`, type: 'screenshot', src: ev.result })
       }
       break
     }
 
     case 'text': {
-      // Throttle DOM updates — use requestAnimationFrame batching
+      // First text chunk: remove thinking indicator
+      _removeWorkingCard()
       if (curTextId) {
         const item = convo().items.find(i => i.id === curTextId)
         if (item) {
@@ -1522,11 +1492,13 @@ function handleAgentEvent(ev) {
     }
 
     case 'error':
+      _removeWorkingCard()
       addCard({ id: `err-${Date.now()}`, type: 'error', text: ev.text })
       addActivityItem('⚠️', `Error: ${ev.text.slice(0, 60)}`)
       finishRun(); break
 
     case 'done':
+      _removeWorkingCard()
       curTextId = null
       addCard({ id: `fb-${Date.now()}`, type: 'feedback' })
       finishRun(); break
@@ -1535,6 +1507,7 @@ function handleAgentEvent(ev) {
 
 function finishRun() {
   isRunning = false
+  _workingCardId = null
   $('aiSend').disabled  = false
   $('aiInput').disabled = false
   $('aiInput').focus()
