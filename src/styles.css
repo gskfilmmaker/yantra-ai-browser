@@ -568,6 +568,13 @@ select option { background: var(--surface2); color: var(--text) }
   30%           { opacity: 1;   transform: translateY(-4px) }
 }
 
+/* Working status card — live progress with history */
+.card-working { background: none; border: none; padding: 4px 0 }
+.working-current { display: flex; align-items: center; gap: 8px }
+.working-label { font-size: 11.5px; color: var(--text2); font-style: italic }
+.working-history { margin-bottom: 4px; display: flex; flex-direction: column; gap: 2px }
+.working-step { font-size: 10.5px; color: var(--text3); padding-left: 2px }
+
 /* === FIND BAR ===================================================== */
 .find-bar {
   position: absolute; top: 8px; right: 12px; display: flex; align-items: center; gap: 6px;
