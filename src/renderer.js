@@ -20,6 +20,14 @@ function esc(s) {
   if (typeof s !== 'string') return ''
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
 }
+function fmtElapsed(sec) {
+  if (sec < 60) return `${sec}s`
+  return `${Math.floor(sec / 60)}m ${sec % 60}s`
+}
+function cancelAgentRun() {
+  if (!isRunning || !activeTabId) return
+  api.agent.cancel(activeTabId)
+}
 function timeAgo(iso) {
   if (!iso) return ''
   const d = new Date(iso)
@@ -1384,11 +1392,16 @@ function cardHTML(item) {
       const doneSteps = (item.steps || []).map(s =>
         `<div class="working-step">✓ ${esc(s)}</div>`
       ).join('')
+      const progress = (item.turn && item.maxTurns)
+        ? `<span class="working-progress">Step ${item.turn}/${item.maxTurns}${item.elapsed ? ` · ${fmtElapsed(item.elapsed)}` : ''}</span>`
+        : (item.elapsed ? `<span class="working-progress">${fmtElapsed(item.elapsed)}</span>` : '')
       return `<div class="card-working">
         ${doneSteps ? `<div class="working-history">${doneSteps}</div>` : ''}
         <div class="working-current">
           <div class="thinking-dots"><span></span><span></span><span></span></div>
           <span class="working-label">${esc(item.label || 'Working…')}</span>
+          ${progress}
+          <button class="working-stop-btn" onclick="cancelAgentRun()" title="Stop task">Stop</button>
         </div>
       </div>`
     }
@@ -1508,6 +1521,19 @@ function handleAgentEvent(ev) {
       // Silently log to activity feed; don't clutter the chat
       addActivityItem('🎯', `Plan: ${ev.title || 'Multi-step'}`)
       break
+
+    case 'progress': {
+      if (_workingCardId) {
+        const item = convo().items.find(i => i.id === _workingCardId)
+        if (item) {
+          item.turn = ev.turn
+          item.maxTurns = ev.maxTurns
+          item.elapsed = ev.elapsed
+          patchCard(_workingCardId)
+        }
+      }
+      break
+    }
 
     case 'tool_call': {
       curTextId = null
