@@ -1366,7 +1366,15 @@ function cardHTML(item) {
       return `<div class="card card-user"><div class="card-user-bubble">${esc(item.text)}</div></div>`
 
     case 'text':
-      return `<div class="card"><div class="card-text">${renderMd(item.text)}</div></div>`
+      return `<div class="card card-ai">
+        <div class="card-text">${renderMd(item.text)}</div>
+        <div class="card-actions">
+          <button class="copy-btn" onclick="copyCardText('${item.id}')" title="Copy">
+            <svg width="12" height="12" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1"/><path d="M2 9V2h7"/></svg>
+            Copy
+          </button>
+        </div>
+      </div>`
 
     case 'plan':
       // Plans are shown only in the activity feed, not the main chat
@@ -1425,10 +1433,58 @@ function addCard(item) {
   scrollThread()
 }
 
-function scrollThread() {
+function scrollThread(force) {
   const thread = $('aiThread')
-  if (thread) thread.scrollTop = thread.scrollHeight
+  if (!thread) return
+  const atBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 100
+  if (force || atBottom) thread.scrollTop = thread.scrollHeight
 }
+
+// ─── Copy card text ───────────────────────────────────────────────────────────
+
+function copyCardText(itemId) {
+  const item = convo().items.find(i => i.id === itemId)
+  if (!item?.text) return
+  navigator.clipboard.writeText(item.text).catch(() => {})
+  const btn = document.querySelector(`#card-${itemId} .copy-btn`)
+  if (!btn) return
+  const orig = btn.innerHTML
+  btn.innerHTML = '<svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,6 4,9 10,2"/></svg> Copied'
+  btn.classList.add('copied')
+  setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('copied') }, 1500)
+}
+
+// ─── Scroll-to-bottom + new-conversation buttons ─────────────────────────────
+
+;(() => {
+  // Scroll-to-bottom floating button
+  const scrollBtn = document.createElement('button')
+  scrollBtn.className = 'scroll-to-bottom'
+  scrollBtn.hidden = true
+  scrollBtn.title = 'Jump to latest'
+  scrollBtn.innerHTML = '<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,4 6.5,9 11,4"/></svg>'
+  scrollBtn.addEventListener('click', () => scrollThread(true))
+  $('aiOverlay').appendChild(scrollBtn)
+  $('aiThread').addEventListener('scroll', () => {
+    const t = $('aiThread')
+    scrollBtn.hidden = t.scrollHeight - t.scrollTop - t.clientHeight < 100
+  })
+
+  // New-conversation (clear thread) button in input meta area
+  const clearBtn = document.createElement('button')
+  clearBtn.className = 'clear-chat-btn'
+  clearBtn.title = 'New conversation'
+  clearBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2l3 3-5.5 5.5H4V8L9 2z"/><line x1="2" y1="12" x2="12" y2="12"/></svg>'
+  clearBtn.addEventListener('click', () => {
+    if (isRunning) return
+    if (convos[activeTabId]) convos[activeTabId] = { items: [] }
+    $('sessionTab').textContent = ''
+    renderThread()
+    $('aiInput').focus()
+  })
+  const meta = document.querySelector('.ai-input-meta')
+  if (meta) meta.prepend(clearBtn)
+})()
 
 // ─── Agent events ─────────────────────────────────────────────────────────────
 
@@ -1564,6 +1620,7 @@ async function sendMessage(prefill) {
 
   $('sessionTab').textContent = text.slice(0, 30) + (text.length > 30 ? '…' : '')
   addCard({ id: `u-${Date.now()}`, type: 'user', text })
+  scrollThread(true)
 
   api.agent.run({ message: text, sessionId: activeTabId })
   addActivityItem('💬', `Agent: ${text.slice(0, 50)}`)
