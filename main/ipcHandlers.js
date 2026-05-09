@@ -31,6 +31,7 @@ require('./tools/personaTools')
 
 // ── Per-session conversation history (server-side) ───────────────────────────
 const sessionHistory = new Map()
+const cancelledSessions = new Set()
 
 const SESSIONS_FILE = path.join(os.homedir(), '.yantra', 'sessions.json')
 
@@ -183,10 +184,11 @@ function register() {
         }
       } catch { /* non-fatal */ }
 
-      // 7. Run the streaming agent loop — 5 min timeout for complex automations
+      // 7. Run the streaming agent loop — 30 min timeout, with cancel support
+      cancelledSessions.delete(sessionId)
       const priorHistory = sessionHistory.get(sessionId) || []
       const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timed out after 5 minutes')), 300_000))
+        setTimeout(() => reject(new Error('Request timed out after 30 minutes')), 1_800_000))
       const finalMessages = await Promise.race([timeout, llmClient.runAgentLoop({
         event,
         sessionId,
@@ -194,6 +196,7 @@ function register() {
         history:      priorHistory,
         systemPrompt,
         tools,
+        isCancelled:  () => cancelledSessions.has(sessionId),
       })])
 
       // 8. Persist conversation
@@ -224,6 +227,11 @@ function register() {
     }
 
     event.sender.send('agent-event', { sessionId, type: 'done' })
+    cancelledSessions.delete(sessionId)
+  })
+
+  ipcMain.on('agent:cancel', (_, sessionId) => {
+    cancelledSessions.add(sessionId)
   })
 
   // ── Vault ──────────────────────────────────────────────────────────────────
