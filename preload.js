@@ -27,7 +27,8 @@ contextBridge.exposeInMainWorld('api', {
 
   // ── AI agent ────────────────────────────────────────────────────────────────
   agent: {
-    run: (data) => ipcRenderer.invoke('agent:run', data),
+    run:    (data)      => ipcRenderer.invoke('agent:run', data),
+    cancel: (sessionId) => ipcRenderer.send('agent:cancel', sessionId),
   },
 
   // ── Memory ──────────────────────────────────────────────────────────────────
