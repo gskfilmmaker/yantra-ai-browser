@@ -12,7 +12,12 @@ class TabManager {
     this._win = null
     this._bounds = { x: 0, y: 84, width: 1280, height: 620 }
     this._idCounter = 0
+    this._recentDownloads = []
+    this._downloadHandlerSet = false
   }
+
+  // Returns the list of completed downloads tracked this session
+  getRecentDownloads() { return this._recentDownloads }
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -279,16 +284,26 @@ class TabManager {
       })
     })
 
-    // Downloads — save to ~/Downloads silently
+    // Downloads — save to ~/Downloads and track for agent tools
     if (!this._downloadHandlerSet) {
       this._downloadHandlerSet = true
       const { Notification } = require('electron')
       const path = require('path')
       const os = require('os')
       wc.session.on('will-download', (_, item) => {
-        item.setSavePath(path.join(os.homedir(), 'Downloads', item.getFilename()))
+        const savePath = path.join(os.homedir(), 'Downloads', item.getFilename())
+        item.setSavePath(savePath)
         item.on('done', (__, state) => {
           if (state === 'completed') {
+            const entry = {
+              filename:    item.getFilename(),
+              path:        savePath,
+              size:        item.getReceivedBytes(),
+              completedAt: Date.now(),
+            }
+            this._recentDownloads.push(entry)
+            if (this._recentDownloads.length > 50) this._recentDownloads.shift()
+            this._emit('download-complete', entry)
             new Notification({ title: 'Download complete', body: item.getFilename() }).show()
           }
         })

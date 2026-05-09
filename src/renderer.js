@@ -135,6 +135,16 @@ api.on.tabUpdated((tab) => {
 api.on.tabClosed(({ tabs: t }) => { tabs = t; renderTabs() })
 api.on.agentEvent(handleAgentEvent)
 
+api.on.downloadComplete(d => {
+  const mb = (d.size / 1048576).toFixed(1)
+  addActivityItem('📥', `Downloaded: ${d.filename} (${mb} MB)`)
+  addCard({
+    id:   `dl-${d.completedAt}`,
+    type: 'text',
+    text: `**Download complete:** ${d.filename} (${mb} MB)\nSaved to ~/Downloads — ask me to move it to Google Drive if you'd like.`,
+  })
+})
+
 yantra.on.routineEvent(ev => {
   if (ev.type === 'start') {
     addCard({ id: `rt-${ev.routineId}-start`, type: 'tool_call', toolName: 'runRoutine',

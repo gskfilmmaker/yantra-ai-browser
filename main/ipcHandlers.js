@@ -28,6 +28,7 @@ require('./tools/cognitiveTools')
 require('./tools/vaultTools')
 require('./tools/autonomyTools')
 require('./tools/personaTools')
+require('./tools/fileSystemTools')
 
 // ── Per-session conversation history (server-side) ───────────────────────────
 const sessionHistory = new Map()

@@ -42,10 +42,11 @@ contextBridge.exposeInMainWorld('api', {
     tabUpdated:  (cb) => ipcRenderer.on('tab:updated',   (_, d) => cb(d)),
     tabSwitched: (cb) => ipcRenderer.on('tab:switched',  (_, d) => cb(d)),
     tabClosed:   (cb) => ipcRenderer.on('tab:closed',    (_, d) => cb(d)),
-    agentEvent:  (cb) => ipcRenderer.on('agent-event',   (_, d) => cb(d)),
-    focusUrlBar: (cb) => ipcRenderer.on('focus-url-bar', ()    => cb()),
-    startFind:   (cb) => ipcRenderer.on('start-find',   ()    => cb()),
-    findResult:  (cb) => ipcRenderer.on('find-result',  (_, d) => cb(d)),
+    agentEvent:       (cb) => ipcRenderer.on('agent-event',       (_, d) => cb(d)),
+    focusUrlBar:      (cb) => ipcRenderer.on('focus-url-bar',     ()    => cb()),
+    startFind:        (cb) => ipcRenderer.on('start-find',        ()    => cb()),
+    findResult:       (cb) => ipcRenderer.on('find-result',       (_, d) => cb(d)),
+    downloadComplete: (cb) => ipcRenderer.on('download-complete', (_, d) => cb(d)),
   },
 
   // Remove all listeners for a channel (cleanup)

@@ -15,6 +15,8 @@ const ALL_TOOLS = [
   'getPageStructure', 'clickElement', 'typeInField', 'pressKey', 'scrollPage',
   'waitForElement', 'captureScreenshot',
   'listRoutines', 'runRoutine',
+  'list_directory', 'find_recent_downloads', 'wait_for_download',
+  'move_file', 'copy_file', 'move_to_google_drive', 'get_google_drive_path',
 ]
 
 const DEFAULT_AGENTS = [
@@ -102,7 +104,9 @@ Always use CSS selectors from getPageStructure output. Never guess selectors.`,
     tools: ['get_current_page', 'executeTask', 'detectCaptcha', 'confirmAction',
             'getPageStructure', 'clickElement', 'typeInField',
             'pressKey', 'scrollPage', 'waitForElement', 'captureScreenshot', 'open_url',
-            'extractTable', 'extractEntities', 'getSelectedText', 'save_note', 'saveFinding'],
+            'extractTable', 'extractEntities', 'getSelectedText', 'save_note', 'saveFinding',
+            'list_directory', 'find_recent_downloads', 'wait_for_download',
+            'move_file', 'copy_file', 'move_to_google_drive', 'get_google_drive_path'],
     memoryScope: 'session',
     autoContext: false,
     defaultActions: [],
