@@ -416,7 +416,7 @@ select option { background: var(--surface2); color: var(--text) }
 .ai-overlay {
   position: absolute; bottom: 0; left: 0; right: 0; background: var(--surface);
   border-top: 1px solid var(--border); display: flex; flex-direction: column; z-index: 20;
-  min-height: 320px;
+  min-height: 320px; max-height: 75vh;
 }
 .ai-drag-handle {
   height: 6px; cursor: ns-resize;
@@ -567,6 +567,36 @@ select option { background: var(--surface2); color: var(--text) }
   0%, 60%, 100% { opacity: .25; transform: translateY(0) }
   30%           { opacity: 1;   transform: translateY(-4px) }
 }
+
+/* Copy / card action row */
+.card-ai { position: relative }
+.card-actions { display: flex; gap: 4px; margin-top: 6px; opacity: 0; transition: opacity .15s }
+.card-ai:hover .card-actions { opacity: 1 }
+.copy-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: var(--r); font-size: 11px;
+  color: var(--text3); border: 1px solid transparent; transition: all .12s;
+}
+.copy-btn:hover { background: var(--surface2); border-color: var(--border); color: var(--text2) }
+.copy-btn.copied { color: var(--green) }
+
+/* Scroll-to-bottom floating button */
+.scroll-to-bottom {
+  position: absolute; bottom: 72px; right: 14px;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--surface2); border: 1px solid var(--border2); color: var(--text2);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,.35); transition: all .12s; z-index: 5;
+}
+.scroll-to-bottom:hover { background: var(--surface3); color: var(--text); border-color: var(--text3) }
+.scroll-to-bottom[hidden] { display: none }
+
+/* New / clear chat button in input meta */
+.clear-chat-btn {
+  width: 28px; height: 28px; border-radius: var(--r); color: var(--text3);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all .12s;
+}
+.clear-chat-btn:hover { background: var(--surface2); color: var(--text2) }
 
 /* Working status card — live progress with history */
 .card-working { background: none; border: none; padding: 4px 0 }
