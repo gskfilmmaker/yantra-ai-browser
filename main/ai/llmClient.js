@@ -1,7 +1,7 @@
 'use strict'
 const registry = require('../tools/registry')
 
-const MAX_TURNS = 12
+const MAX_TURNS = 40
 
 // ── OpenAI helpers ────────────────────────────────────────────────────────────
 
@@ -54,7 +54,7 @@ function toOpenAIMessages(systemPrompt, anthropicMessages) {
 
 // ── Anthropic agent loop ──────────────────────────────────────────────────────
 
-async function runAgentLoopAnthropic({ event, sessionId, message, history, systemPrompt, tools }) {
+async function runAgentLoopAnthropic({ event, sessionId, message, history, systemPrompt, tools, isCancelled }) {
   const Anthropic = require('@anthropic-ai/sdk')
   const anthropic = new Anthropic()
 
@@ -68,8 +68,15 @@ async function runAgentLoopAnthropic({ event, sessionId, message, history, syste
     return false
   })
   const messages = [...safeHistory, { role: 'user', content: message }]
+  const startTime = Date.now()
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
+    if (isCancelled && isCancelled()) {
+      event.sender.send('agent-event', { sessionId, type: 'text', text: '⛔ Task cancelled.' })
+      break
+    }
+    const elapsed = Math.round((Date.now() - startTime) / 1000)
+    event.sender.send('agent-event', { sessionId, type: 'progress', turn: turn + 1, maxTurns: MAX_TURNS, elapsed })
     const stream = anthropic.messages.stream({
       model:      'claude-sonnet-4-6',
       max_tokens: 4096,
@@ -119,6 +126,10 @@ async function runAgentLoopAnthropic({ event, sessionId, message, history, syste
       }
       messages.push({ role: 'assistant', content: response.content })
       messages.push({ role: 'user',      content: toolResults })
+      if (isCancelled && isCancelled()) {
+        event.sender.send('agent-event', { sessionId, type: 'text', text: '⛔ Task cancelled.' })
+        break
+      }
       continue
     }
 
@@ -130,14 +141,21 @@ async function runAgentLoopAnthropic({ event, sessionId, message, history, syste
 
 // ── OpenAI agent loop ─────────────────────────────────────────────────────────
 
-async function runAgentLoopOpenAI({ event, sessionId, message, history, systemPrompt, tools }) {
+async function runAgentLoopOpenAI({ event, sessionId, message, history, systemPrompt, tools, isCancelled }) {
   const { OpenAI } = require('openai')
   const openai     = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   const openaiTools = tools.length ? toOpenAITools(tools) : undefined
   const messages    = toOpenAIMessages(systemPrompt, history || [])
   messages.push({ role: 'user', content: message })
+  const startTime = Date.now()
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
+    if (isCancelled && isCancelled()) {
+      event.sender.send('agent-event', { sessionId, type: 'text', text: '⛔ Task cancelled.' })
+      break
+    }
+    const elapsed = Math.round((Date.now() - startTime) / 1000)
+    event.sender.send('agent-event', { sessionId, type: 'progress', turn: turn + 1, maxTurns: MAX_TURNS, elapsed })
     const stream = await openai.chat.completions.create({
       model: 'gpt-4o', max_tokens: 4096,
       messages, tools: openaiTools, stream: true,
@@ -206,7 +224,7 @@ async function runAgentLoopOpenAI({ event, sessionId, message, history, systemPr
 
 // ── Provider router with auto-fallback ────────────────────────────────────────
 
-async function runAgentLoop({ event, sessionId, message, history, systemPrompt, tools }) {
+async function runAgentLoop({ event, sessionId, message, history, systemPrompt, tools, isCancelled }) {
   const hasAnthropic = !!process.env.ANTHROPIC_API_KEY
   const hasOpenAI    = !!process.env.OPENAI_API_KEY
   const preferred    = process.env.PREFERRED_PROVIDER || 'anthropic'
@@ -219,24 +237,24 @@ async function runAgentLoop({ event, sessionId, message, history, systemPrompt, 
 
   if (primaryIsAnthropic) {
     try {
-      return await runAgentLoopAnthropic({ event, sessionId, message, history, systemPrompt, tools })
+      return await runAgentLoopAnthropic({ event, sessionId, message, history, systemPrompt, tools, isCancelled })
     } catch (err) {
       const isOverload = err.status === 529 || err.status === 429 ||
         /overload|rate.?limit/i.test(err.message || '')
       if (isOverload && hasOpenAI) {
         event.sender.send('agent-event', { sessionId, type: 'text', text: '⚠️ Claude is busy — retrying with GPT-4o…\n\n' })
-        return await runAgentLoopOpenAI({ event, sessionId, message, history, systemPrompt, tools })
+        return await runAgentLoopOpenAI({ event, sessionId, message, history, systemPrompt, tools, isCancelled })
       }
       throw err
     }
   } else {
     try {
-      return await runAgentLoopOpenAI({ event, sessionId, message, history, systemPrompt, tools })
+      return await runAgentLoopOpenAI({ event, sessionId, message, history, systemPrompt, tools, isCancelled })
     } catch (err) {
       const isOverload = /rate.?limit|overload/i.test(err.message || '')
       if (isOverload && hasAnthropic) {
         event.sender.send('agent-event', { sessionId, type: 'text', text: '⚠️ GPT-4o rate limited — retrying with Claude…\n\n' })
-        return await runAgentLoopAnthropic({ event, sessionId, message, history, systemPrompt, tools })
+        return await runAgentLoopAnthropic({ event, sessionId, message, history, systemPrompt, tools, isCancelled })
       }
       throw err
     }
