@@ -1372,8 +1372,18 @@ function cardHTML(item) {
       // Plans are shown only in the activity feed, not the main chat
       return ''
 
-    case 'thinking':
-      return `<div class="card-thinking"><div class="thinking-dots"><span></span><span></span><span></span></div></div>`
+    case 'thinking': {
+      const doneSteps = (item.steps || []).map(s =>
+        `<div class="working-step">✓ ${esc(s)}</div>`
+      ).join('')
+      return `<div class="card-working">
+        ${doneSteps ? `<div class="working-history">${doneSteps}</div>` : ''}
+        <div class="working-current">
+          <div class="thinking-dots"><span></span><span></span><span></span></div>
+          <span class="working-label">${esc(item.label || 'Working…')}</span>
+        </div>
+      </div>`
+    }
 
     case 'screenshot':
       return `<div class="card" style="padding:8px"><img class="card-screenshot" src="${esc(item.src)}" alt="Screenshot"></div>`
@@ -1445,15 +1455,39 @@ function handleAgentEvent(ev) {
 
     case 'tool_call': {
       curTextId = null
+      const _label = ev.toolName === 'web_search'        ? `Searching: "${(ev.toolInput?.query || '').slice(0, 50)}"`
+                   : ev.toolName === 'fetch_webpage'     ? `Reading: ${(ev.toolInput?.url || '').replace(/^https?:\/\/(www\.)?/, '').slice(0, 50)}`
+                   : ev.toolName === 'get_current_page'  ? 'Reading current page…'
+                   : ev.toolName === 'clickElement'      ? `Clicking: "${(ev.toolInput?.text || ev.toolInput?.selector || '').slice(0, 40)}"`
+                   : ev.toolName === 'typeInField'       ? `Typing into field…`
+                   : ev.toolName === 'scrollPage'        ? 'Scrolling page…'
+                   : ev.toolName === 'captureScreenshot' ? 'Taking screenshot…'
+                   : ev.toolName === 'cogitate'          ? 'Thinking deeply…'
+                   : ev.toolName === 'extractTable'      ? 'Extracting table data…'
+                   : ev.toolName === 'extractEntities'   ? 'Extracting information…'
+                   : ev.toolName === 'save_note'         ? 'Saving note…'
+                   : ev.toolName === 'saveFinding'       ? 'Saving finding…'
+                   : ev.toolName === 'generateReport'    ? 'Generating report…'
+                   : ev.toolName === 'scheduleTask'      ? `Scheduling: ${ev.toolInput?.name || ''}`
+                   : ev.toolName === 'watchPage'         ? `Setting up monitor…`
+                   : `${ev.toolName}…`
       if (!_workingCardId) {
-        const item = { id: `thinking-${Date.now()}`, type: 'thinking' }
+        const item = { id: `thinking-${Date.now()}`, type: 'thinking', label: _label, steps: [] }
         _workingCardId = item.id
         addCard(item)
+      } else {
+        const item = convo().items.find(i => i.id === _workingCardId)
+        if (item) {
+          if (item.label) item.steps = [...(item.steps || []), item.label].slice(-4)
+          item.label = _label
+          patchCard(_workingCardId)
+          scrollThread()
+        }
       }
       toolMap[ev.toolId] = _workingCardId
       addActivityItem(
         ev.toolName === 'web_search' ? '🔍' : ev.toolName === 'captureScreenshot' ? '📸' : '⚙️',
-        `${ev.toolName}${ev.toolInput?.query ? ': ' + ev.toolInput.query : ''}`
+        _label
       )
       break
     }
