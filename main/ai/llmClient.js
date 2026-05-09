@@ -118,7 +118,12 @@ async function runAgentLoopAnthropic({ event, sessionId, message, history, syste
         if (typeof result === 'string' && result.startsWith('data:image/')) {
           const isJpeg = result.startsWith('data:image/jpeg;base64,')
           const prefix = isJpeg ? 'data:image/jpeg;base64,' : 'data:image/png;base64,'
-          apiContent = [{ type: 'image', source: { type: 'base64', media_type: isJpeg ? 'image/jpeg' : 'image/png', data: result.slice(prefix.length) } }]
+          const b64 = result.slice(prefix.length)
+          if (b64.length > 0) {
+            apiContent = [{ type: 'image', source: { type: 'base64', media_type: isJpeg ? 'image/jpeg' : 'image/png', data: b64 } }]
+          } else {
+            apiContent = '[screenshot capture failed — page may not have loaded yet]'
+          }
         } else {
           apiContent = result
         }
