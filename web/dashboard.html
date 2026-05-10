@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>YANTRA — Dashboard Preview</title>
+  <meta name="description" content="YANTRA dashboard preview: manage agents, memory, automation routines, and your credential vault." />
+  <meta name="robots" content="noindex" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -36,7 +38,7 @@
   </aside>
   <main class="dash-main">
     <div class="dash-panel active" id="panel-home">
-      <div class="dp-header"><h1>Good morning</h1><div class="dp-meta">Sunday · May 4 · Everything is running smoothly</div></div>
+      <div class="dp-header"><h1>Good morning</h1><div class="dp-meta" id="dash-meta">Everything is running smoothly</div></div>
       <div class="stat-row">
         <div class="stat-card"><div class="stat-num">4</div><div class="stat-label">Active agents</div></div>
         <div class="stat-card"><div class="stat-num">142</div><div class="stat-label">Memory items</div></div>
@@ -52,10 +54,10 @@
       </div>
       <div class="dp-section-title">Quick actions</div>
       <div class="quick-grid">
-        <button class="quick-btn" onclick="switchPanel('agents')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>New Agent</button>
-        <button class="quick-btn" onclick="switchPanel('automation')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>New Routine</button>
-        <button class="quick-btn" onclick="switchPanel('vault')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Add Credential</button>
-        <button class="quick-btn" onclick="switchPanel('memory')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search Memory</button>
+        <button class="quick-btn" data-panel="agents"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>New Agent</button>
+        <button class="quick-btn" data-panel="automation"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>New Routine</button>
+        <button class="quick-btn" data-panel="vault"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Add Credential</button>
+        <button class="quick-btn" data-panel="memory"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search Memory</button>
       </div>
     </div>
     <div class="dash-panel" id="panel-agents">
@@ -68,7 +70,7 @@
       </div>
     </div>
     <div class="dash-panel" id="panel-memory">
-      <div class="dp-header"><h1>Memory</h1><div class="dp-search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Search memory…" oninput="filterMemory(this.value)" /></div></div>
+      <div class="dp-header"><h1>Memory</h1><div class="dp-search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="memory-search" placeholder="Search memory…" /></div></div>
       <div class="memory-list" id="memoryList">
         <div class="mem-item"><div class="mem-type research">research</div><div class="mem-body"><div class="mem-title">AI market trends 2025</div><div class="mem-snippet">The AI market is expected to reach $407B by 2027, with agentic AI and multimodal models leading growth…</div><div class="mem-meta">yantra.ai · 2h ago</div></div></div>
         <div class="mem-item"><div class="mem-type page">page</div><div class="mem-body"><div class="mem-title">Anthropic API rate limits</div><div class="mem-snippet">claude-sonnet-4-6: 4000 RPM, 400K TPM. claude-opus-4: 1000 RPM, 200K TPM…</div><div class="mem-meta">docs.anthropic.com · Yesterday</div></div></div>
@@ -80,9 +82,9 @@
       <div class="dp-header"><h1>Credential Vault</h1><button class="btn-sm-accent">+ Add credential</button></div>
       <div class="vault-notice"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>All credentials are AES-256-GCM encrypted on your device. This is a preview only — manage credentials in the desktop app.</div>
       <div class="vault-list">
-        <div class="vault-item"><div class="vault-domain">github.com</div><div class="vault-user">gskfilmmaker</div><div class="vault-actions"><button class="vault-btn">Copy password</button></div></div>
-        <div class="vault-item"><div class="vault-domain">anthropic.com</div><div class="vault-user">gskproductionsinc@gmail.com</div><div class="vault-actions"><button class="vault-btn">Copy password</button></div></div>
-        <div class="vault-item"><div class="vault-domain">vercel.com</div><div class="vault-user">gskproductionsinc-4238</div><div class="vault-actions"><button class="vault-btn">Copy password</button></div></div>
+        <div class="vault-item"><div class="vault-domain">github.com</div><div class="vault-user">your-username</div><div class="vault-actions"><button class="vault-btn">Copy password</button></div></div>
+        <div class="vault-item"><div class="vault-domain">anthropic.com</div><div class="vault-user">you@example.com</div><div class="vault-actions"><button class="vault-btn">Copy password</button></div></div>
+        <div class="vault-item"><div class="vault-domain">vercel.com</div><div class="vault-user">your-team</div><div class="vault-actions"><button class="vault-btn">Copy password</button></div></div>
       </div>
     </div>
     <div class="dash-panel" id="panel-automation">
