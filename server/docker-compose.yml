@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  yantra:
+    build: .
+    ports:
+      - "3737:3737"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PORT=3737
+    volumes:
+      - yantra-data:/app/data
+    restart: unless-stopped
+volumes:
+  yantra-data:
