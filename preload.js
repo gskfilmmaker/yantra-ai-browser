@@ -91,6 +91,13 @@ contextBridge.exposeInMainWorld('yantra', {
     autonomyEvent: (cb) => ipcRenderer.on('autonomy-event',  (_, d) => cb(d)),
   },
 
+  gdrive: {
+    status:      ()                       => ipcRenderer.invoke('gdrive:status'),
+    connect:     (clientId, clientSecret) => ipcRenderer.invoke('gdrive:connect',  { clientId, clientSecret }),
+    disconnect:  ()                       => ipcRenderer.invoke('gdrive:disconnect'),
+    listFolders: ()                       => ipcRenderer.invoke('gdrive:listFolders'),
+  },
+
   vault: {
     list:   ()             => ipcRenderer.invoke('vault:list'),
     get:    (site)         => ipcRenderer.invoke('vault:get', site),

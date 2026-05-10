@@ -31,6 +31,10 @@
       <input id="urlInput" class="url-input" placeholder="Search or enter URL…" autocomplete="off" spellcheck="false"/>
     </div>
     <div class="nav-actions">
+      <button class="nav-action-btn outline" id="btnSplitView" title="Watch browser while chatting">
+        <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="1" width="5" height="10" rx="1" stroke="currentColor" stroke-width="1.4" fill="none"/><rect x="7" y="1" width="4" height="10" rx="1" stroke="currentColor" stroke-width="1.4" fill="none"/></svg>
+        Watch
+      </button>
       <button class="nav-action-btn outline" id="btnUpdateNow">
         <svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 2v7M3 6l3-4 3 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
         Analyze
@@ -273,6 +277,24 @@
                 <option value="openai">GPT-4o (auto-fallback to Claude)</option>
               </select>
               <div class="field-hint">Stored locally in ~/.yantra/settings.json</div>
+            </div>
+          </div>
+          <hr class="settings-sep">
+          <div class="settings-section">
+            <div class="settings-section-title">Google Drive</div>
+            <div id="gdriveStatus" class="gdrive-status">Not connected</div>
+            <div class="modal-field">
+              <label class="field-label">Client ID</label>
+              <input id="gdriveClientId" class="field-input" type="text" placeholder="…apps.googleusercontent.com" autocomplete="off">
+            </div>
+            <div class="modal-field">
+              <label class="field-label">Client Secret</label>
+              <input id="gdriveClientSecret" class="field-input" type="password" placeholder="GOCSPX-…" autocomplete="off">
+            </div>
+            <div class="field-hint" style="margin-bottom:8px">Get credentials at <strong>console.cloud.google.com</strong> → APIs &amp; Services → Credentials → OAuth 2.0 Client ID (Desktop app). Enable the Google Drive API first.</div>
+            <div class="settings-actions-row">
+              <button class="panel-btn panel-btn-primary" id="gdriveConnectBtn">Connect Google Drive</button>
+              <button class="panel-btn" id="gdriveDisconnectBtn" hidden>Disconnect</button>
             </div>
           </div>
           <hr class="settings-sep">

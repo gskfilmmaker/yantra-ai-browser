@@ -418,6 +418,25 @@ select option { background: var(--surface2); color: var(--text) }
   border-top: 1px solid var(--border); display: flex; flex-direction: column; z-index: 20;
   min-height: 320px; max-height: 75vh;
 }
+
+/* ── Split view mode ── */
+body.split-active .ai-overlay {
+  top: 0; right: 0; bottom: 0; left: auto;
+  width: var(--split-chat-w, 360px);
+  border-top: none; border-left: 1px solid var(--border);
+  min-height: unset; max-height: unset;
+  resize: none;
+}
+body.split-active .ai-drag-handle { cursor: ew-resize }
+body.split-active .ai-drag-handle::after { width: 3px; height: 32px }
+#btnSplitView.split-on { color: var(--blue); border-color: var(--blue); background: rgba(59,130,246,.1) }
+
+/* Google Drive settings */
+.gdrive-status {
+  font-size: 11.5px; color: var(--text3); padding: 4px 0 8px;
+}
+.gdrive-status.connected { color: #22c55e; }
+.gdrive-status.connected::before { content: '✓ '; }
 .ai-drag-handle {
   height: 6px; cursor: ns-resize;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;

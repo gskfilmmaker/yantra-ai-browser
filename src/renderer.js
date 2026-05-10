@@ -748,7 +748,51 @@ async function loadSettingsPanel() {
   $('settingsApiKey').value    = s.apiKey            || ''
   $('settingsOpenaiKey').value = s.openaiApiKey      || ''
   $('settingsProvider').value  = s.preferredProvider || 'anthropic'
+  $('gdriveClientId').value     = s.gdriveClientId     || ''
+  $('gdriveClientSecret').value = s.gdriveClientSecret || ''
+  const connected = await yantra.gdrive.status().catch(() => false)
+  const statusEl = $('gdriveStatus')
+  if (connected) {
+    statusEl.textContent = 'Connected to Google Drive'
+    statusEl.className   = 'gdrive-status connected'
+    $('gdriveDisconnectBtn').hidden = false
+    $('gdriveConnectBtn').hidden    = true
+  } else {
+    statusEl.textContent = 'Not connected'
+    statusEl.className   = 'gdrive-status'
+    $('gdriveDisconnectBtn').hidden = true
+    $('gdriveConnectBtn').hidden    = false
+  }
 }
+
+$('gdriveConnectBtn').addEventListener('click', async () => {
+  const clientId     = $('gdriveClientId').value.trim()
+  const clientSecret = $('gdriveClientSecret').value.trim()
+  if (!clientId || !clientSecret) {
+    alert('Enter your Google OAuth Client ID and Client Secret first.\n\nGet them at console.cloud.google.com → APIs & Services → Credentials → OAuth 2.0 Client ID (Desktop app). Enable the Google Drive API first.')
+    return
+  }
+  $('gdriveConnectBtn').textContent = 'Waiting for Google sign-in…'
+  $('gdriveConnectBtn').disabled = true
+  try {
+    await yantra.gdrive.connect(clientId, clientSecret)
+    await loadSettingsPanel()
+    addActivityItem('✅', 'Google Drive connected')
+    addCard({ id: `gdrive-conn-${Date.now()}`, type: 'text', text: '✅ **Google Drive connected!**\n\nThe agent can now upload files directly to your Drive with `upload_to_google_drive_api`.' })
+  } catch (e) {
+    alert('Google Drive connection failed: ' + e.message)
+  } finally {
+    $('gdriveConnectBtn').textContent = 'Connect Google Drive'
+    $('gdriveConnectBtn').disabled = false
+  }
+})
+
+$('gdriveDisconnectBtn').addEventListener('click', async () => {
+  if (!confirm('Disconnect Google Drive? The agent will lose Drive API access.')) return
+  await yantra.gdrive.disconnect()
+  await loadSettingsPanel()
+  addActivityItem('🔌', 'Google Drive disconnected')
+})
 
 $('settingsSaveBtn').addEventListener('click', async () => {
   const anthropicKey = $('settingsApiKey').value.trim()
@@ -1319,6 +1363,39 @@ $('btnChat').addEventListener('click', () => {
   scheduleBoundsUpdate()
 })
 
+// ── Split view toggle ─────────────────────────────────────────────────────────
+let _splitActive = false
+let _splitW = 360  // current chat panel width in split mode
+
+$('btnSplitView').addEventListener('click', () => {
+  _splitActive = !_splitActive
+  document.body.classList.toggle('split-active', _splitActive)
+  document.documentElement.style.setProperty('--split-chat-w', _splitW + 'px')
+  $('btnSplitView').classList.toggle('split-on', _splitActive)
+  $('btnSplitView').querySelector('svg + *') // text node
+  $('btnSplitView').childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = _splitActive ? ' Watch ●' : ' Watch' })
+  const overlay = $('aiOverlay')
+  overlay.style.display = 'flex'
+  scheduleBoundsUpdate()
+})
+
+// Horizontal drag to resize split panel
+const dragHandle = $('aiDragHandle')
+let _splitDrag = null
+dragHandle.addEventListener('mousedown', e => {
+  if (!_splitActive) return  // vertical drag handled below
+  _splitDrag = { x: e.clientX, w: _splitW }
+  e.preventDefault()
+})
+document.addEventListener('mousemove', e => {
+  if (!_splitDrag) return
+  const delta = _splitDrag.x - e.clientX
+  _splitW = Math.max(280, Math.min(600, _splitDrag.w + delta))
+  document.documentElement.style.setProperty('--split-chat-w', _splitW + 'px')
+  scheduleBoundsUpdate()
+})
+document.addEventListener('mouseup', () => { _splitDrag = null })
+
 $('btnUpdateNow').addEventListener('click', () => {
   const tab = tabs.find(t => t.id === activeTabId)
   const msg = tab?.url && !tab.url.startsWith('about:')
@@ -1348,13 +1425,16 @@ function updateBrowserViewBounds() {
   const sidebarW = sidebar.offsetWidth
   const topY     = tabStrip.offsetHeight + navRow.offsetHeight + (ctxBar.hidden ? 0 : ctxBar.offsetHeight)
   const winH     = window.innerHeight
-  const overlayH = overlay.offsetHeight
+
+  // In split mode: browser fills left portion, chat panel is a right sidebar
+  const chatW = _splitActive ? (overlay.offsetWidth || _splitW) : 0
+  const chatH = _splitActive ? 0 : (overlay.style.display !== 'none' ? overlay.offsetHeight : 0)
 
   api.browser.setBounds({
     x:      Math.round(sidebarW),
     y:      Math.round(topY),
-    width:  Math.round(window.innerWidth - sidebarW),
-    height: Math.round(winH - topY - overlayH),
+    width:  Math.round(window.innerWidth - sidebarW - chatW),
+    height: Math.round(winH - topY - chatH),
   })
 }
 
@@ -1366,12 +1446,14 @@ let dragStart = null
 const dragHandle = $('aiDragHandle')
 const aiOverlay  = $('aiOverlay')
 
+// Vertical drag (normal mode only) — horizontal drag in split mode handled above
+let dragStart = null
 dragHandle.addEventListener('mousedown', e => {
+  if (_splitActive) return  // split mode uses horizontal drag
   dragStart = { y: e.clientY, h: aiOverlay.offsetHeight }
   document.addEventListener('mousemove', onDragMove)
   document.addEventListener('mouseup',   onDragUp)
 })
-
 function onDragMove(e) {
   if (!dragStart) return
   const delta = dragStart.y - e.clientY

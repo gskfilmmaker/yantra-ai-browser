@@ -237,3 +237,45 @@ registry.register({
     return `Moved to Google Drive!\nFile: ${path.basename(src)}\nLocal path: ${dest}\nGoogle Drive folder: ${subfolder || '(root)'}\nThe file will sync to Google Drive cloud automatically.`
   },
 })
+
+// ── upload_to_google_drive_api ────────────────────────────────────────────────
+// Uses the Google Drive REST API (OAuth2). Requires connecting in Settings first.
+
+registry.register({
+  name: 'upload_to_google_drive_api',
+  description: 'Upload a local file directly to Google Drive via the API — no desktop app needed. Requires Google Drive to be connected in Settings first. Returns the Google Drive file URL.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      file_path:    { type: 'string', description: 'Full path or ~/Downloads/filename of the file to upload.' },
+      folder_name:  { type: 'string', description: 'Google Drive folder name to upload into (created if it does not exist). Omit for Drive root.' },
+      file_name:    { type: 'string', description: 'Override the filename in Google Drive. Defaults to the local filename.' },
+    },
+    required: ['file_path'],
+  },
+  async execute({ file_path, folder_name, file_name } = {}) {
+    const driveClient = require('../google/driveClient')
+    if (!driveClient.isConnected()) {
+      return 'Google Drive not connected. Go to Settings (⚙) → Google Drive → Connect Google Drive.'
+    }
+    const src = (file_path.startsWith('/') || file_path.startsWith('~'))
+      ? file_path.replace(/^~/, os.homedir())
+      : path.join(DOWNLOADS, file_path)
+    if (!fs.existsSync(src)) return `File not found: ${src}`
+
+    let folderId
+    if (folder_name) {
+      const folders = await driveClient.listFolders()
+      const existing = folders.find(f => f.name.toLowerCase() === folder_name.toLowerCase())
+      if (existing) {
+        folderId = existing.id
+      } else {
+        const created = await driveClient.createFolder(folder_name)
+        folderId = created.id
+      }
+    }
+
+    const result = await driveClient.uploadFile(src, { folderId, fileName: file_name })
+    return `Uploaded to Google Drive!\nFile: ${result.name}\nView: ${result.webViewLink}\nFolder: ${folder_name || '(Drive root)'}`
+  },
+})

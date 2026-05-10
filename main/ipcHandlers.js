@@ -140,6 +140,28 @@ function register() {
     if (k === 'preferredProvider'     ) process.env.PREFERRED_PROVIDER  = v || 'anthropic'
   })
 
+  // ── Google Drive OAuth ────────────────────────────────────────────────────────
+  const driveClient = require('./google/driveClient')
+  ipcMain.handle('gdrive:status', () => driveClient.isConnected())
+  ipcMain.handle('gdrive:getAuthUrl', (_, { clientId, clientSecret }) => {
+    appSettings.set('gdriveClientId',     clientId)
+    appSettings.set('gdriveClientSecret', clientSecret)
+    return driveClient.getAuthUrl(clientId, clientSecret)
+  })
+  ipcMain.handle('gdrive:connect', async (event, { clientId, clientSecret }) => {
+    appSettings.set('gdriveClientId',     clientId)
+    appSettings.set('gdriveClientSecret', clientSecret)
+    const authUrl = driveClient.getAuthUrl(clientId, clientSecret)
+    // Open Google auth page in the active browser tab
+    tabManager.navigate(authUrl)
+    // Wait for the OAuth callback on localhost:42813
+    const code = await driveClient.waitForOAuthCode()
+    await driveClient.exchangeCode(code)
+    return { ok: true }
+  })
+  ipcMain.handle('gdrive:disconnect', () => { driveClient.clearTokens(); return true })
+  ipcMain.handle('gdrive:listFolders', () => driveClient.listFolders().catch(e => { throw e }))
+
   // ── Data management ──────────────────────────────────────────────────────────
   ipcMain.handle('memory:clear', () => {
     const file = path.join(os.homedir(), '.strawberry', 'memory.json')
