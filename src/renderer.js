@@ -1407,7 +1407,7 @@ $('btnSplitView').addEventListener('click', () => {
   document.documentElement.style.setProperty('--split-chat-w', _splitW + 'px')
   $('btnSplitView').classList.toggle('split-on', _splitActive)
   $('btnSplitView').querySelector('svg + *') // text node
-  $('btnSplitView').childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = _splitActive ? ' Watch ●' : ' Watch' })
+  $('btnSplitView').childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = _splitActive ? ' Watch ●' : ' Watch' })
   const overlay = $('aiOverlay')
   overlay.style.display = 'flex'
   scheduleBoundsUpdate()
@@ -1707,7 +1707,8 @@ function handleAgentEvent(ev) {
 
     case 'tool_call': {
       curTextId = null
-      const _label = ev.toolName === 'web_search'        ? `Searching: "${(ev.toolInput?.query || '').slice(0, 50)}"`
+      const _label = ev.toolName === '_connecting'        ? `Connecting to remote server (${ev.toolInput?.host || ''})…`
+                   : ev.toolName === 'web_search'        ? `Searching: "${(ev.toolInput?.query || '').slice(0, 50)}"`
                    : ev.toolName === 'fetch_webpage'     ? `Reading: ${(ev.toolInput?.url || '').replace(/^https?:\/\/(www\.)?/, '').slice(0, 50)}`
                    : ev.toolName === 'get_current_page'  ? 'Reading current page…'
                    : ev.toolName === 'clickElement'      ? `Clicking: "${(ev.toolInput?.text || ev.toolInput?.selector || '').slice(0, 40)}"`

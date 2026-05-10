@@ -2,6 +2,15 @@
 const https = require('https')
 const http  = require('http')
 
+// How long to wait for Railway to accept the initial POST (handles cold starts)
+const CONNECT_TIMEOUT_MS = 45_000
+
+// How long the SSE stream can be silent before we treat it as dead
+const SSE_IDLE_TIMEOUT_MS = 90_000
+
+// Overall hard cap on a single remote agent run
+const RUN_TIMEOUT_MS = 30 * 60_000
+
 function _opts(baseUrl, path, method = 'GET', bodyLen = 0) {
   const u = new URL(path, baseUrl.replace(/\/$/, '') + '/')
   const secure = u.protocol === 'https:'
@@ -17,7 +26,7 @@ function _opts(baseUrl, path, method = 'GET', bodyLen = 0) {
   }
 }
 
-function _req(opts, body) {
+function _req(opts, body, timeoutMs = CONNECT_TIMEOUT_MS) {
   return new Promise((resolve, reject) => {
     const { _mod, ...reqOpts } = opts
     const req = _mod.request(reqOpts, (res) => {
@@ -29,7 +38,7 @@ function _req(opts, body) {
       })
     })
     req.on('error', reject)
-    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Connection timeout')) })
+    req.setTimeout(timeoutMs, () => { req.destroy(); reject(new Error('Connection timeout — Railway may be cold-starting, try again in 30s')) })
     if (body) req.write(body)
     req.end()
   })
@@ -50,9 +59,23 @@ function streamSSE(baseUrl, path, onEvent) {
     reqOpts.headers = { Accept: 'text/event-stream', 'Cache-Control': 'no-cache' }
 
     let reqRef
+    let idleTimer
+
+    function resetIdleTimer() {
+      clearTimeout(idleTimer)
+      // If the stream goes completely silent (no data, not even heartbeats) for
+      // SSE_IDLE_TIMEOUT_MS, treat the connection as dead and unblock.
+      idleTimer = setTimeout(() => {
+        try { reqRef && reqRef.destroy() } catch {}
+        resolve()
+      }, SSE_IDLE_TIMEOUT_MS)
+    }
+
     reqRef = _mod.request(reqOpts, (res) => {
+      resetIdleTimer()
       let buf = ''
       res.on('data', (chunk) => {
+        resetIdleTimer()
         buf += chunk.toString()
         let idx
         while ((idx = buf.indexOf('\n\n')) !== -1) {
@@ -63,16 +86,21 @@ function streamSSE(baseUrl, path, onEvent) {
               try {
                 const ev = JSON.parse(line.slice(6))
                 onEvent(ev)
-                if (ev.type === 'done') { reqRef.destroy(); resolve(); return }
+                if (ev.type === 'done') {
+                  clearTimeout(idleTimer)
+                  reqRef.destroy()
+                  resolve()
+                  return
+                }
               } catch { /* malformed JSON — skip */ }
             }
           }
         }
       })
-      res.on('end',   resolve)
-      res.on('error', () => resolve())
+      res.on('end',   () => { clearTimeout(idleTimer); resolve() })
+      res.on('error', () => { clearTimeout(idleTimer); resolve() })
     })
-    reqRef.on('error', () => resolve())
+    reqRef.on('error', () => { clearTimeout(idleTimer); resolve() })
     reqRef.end()
   })
 }
@@ -90,20 +118,46 @@ async function runRemoteLoop({
   getInterrupt,
   baseUrl,
 }) {
-  // Start session on Railway server
+  // Show a thinking card immediately so the UI isn't silent during cold start
+  if (!event.sender.isDestroyed()) {
+    event.sender.send('agent-event', {
+      sessionId,
+      type: 'tool_call',
+      toolId: 'remote-connect',
+      toolName: '_connecting',
+      toolInput: { host: new URL(baseUrl).hostname },
+    })
+  }
+
+  // Start session on Railway server (longer timeout to survive cold starts)
   const { sessionId: remoteId } = await post(baseUrl, '/api/agent/run', { message, history })
 
-  // Indicate remote mode in the UI
+  // Confirm connected and hand off to remote
   if (!event.sender.isDestroyed()) {
     event.sender.send('agent-event', {
       sessionId,
       type: 'text',
-      text: `_Running on remote server (${new URL(baseUrl).hostname})…_\n\n`,
+      text: `_Connected to remote server (${new URL(baseUrl).hostname}) — running agent…_\n\n`,
     })
   }
 
-  // Poll for interrupts / cancels every second
+  // Hard cap on total run time — matches local mode's 30-minute guard
   let finished = false
+  const hardTimeout = setTimeout(() => {
+    if (!finished) {
+      finished = true
+      if (!event.sender.isDestroyed()) {
+        event.sender.send('agent-event', {
+          sessionId,
+          type: 'error',
+          text: 'Remote agent run timed out after 30 minutes.',
+        })
+      }
+      try { post(baseUrl, `/api/agent/cancel/${remoteId}`, {}).catch(() => {}) } catch {}
+    }
+  }, RUN_TIMEOUT_MS)
+
+  // Poll for interrupts / cancels every second
   const pollHandle = setInterval(async () => {
     if (finished) { clearInterval(pollHandle); return }
 
@@ -131,6 +185,7 @@ async function runRemoteLoop({
 
   finished = true
   clearInterval(pollHandle)
+  clearTimeout(hardTimeout)
 }
 
 module.exports = { runRemoteLoop, testConnection }
