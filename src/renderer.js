@@ -1476,12 +1476,10 @@ window.addEventListener('resize', scheduleBoundsUpdate)
 
 // ─── AI overlay drag resize ───────────────────────────────────────────────────
 
-let dragStart = null
-const dragHandle = $('aiDragHandle')
 const aiOverlay  = $('aiOverlay')
+let dragStart = null
 
 // Vertical drag (normal mode only) — horizontal drag in split mode handled above
-let dragStart = null
 dragHandle.addEventListener('mousedown', e => {
   if (_splitActive) return  // split mode uses horizontal drag
   dragStart = { y: e.clientY, h: aiOverlay.offsetHeight }
@@ -1579,7 +1577,7 @@ function cardHTML(item) {
           <div class="resume-title">Unfinished task from ${esc(item.agoStr)}</div>
           <div class="resume-goal">${esc(item.goal)}</div>
         </div>
-        <button class="resume-btn" onclick="resumeSession('${esc(item.sessionId)}','${esc(item.goal)}')">Resume</button>
+        <button class="resume-btn" onclick="resumeSession('${esc(item.sessionId)}','${esc(item.goal)}')" >Resume</button>
         <button class="resume-dismiss" onclick="this.closest('.card-resume').remove()" title="Dismiss">✕</button>
       </div>`
 
