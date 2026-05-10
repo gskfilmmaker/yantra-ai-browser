@@ -763,6 +763,18 @@ async function loadSettingsPanel() {
     $('gdriveDisconnectBtn').hidden = true
     $('gdriveConnectBtn').hidden    = false
   }
+
+  // Remote backend
+  const rUrl = s.remoteServerUrl || ''
+  $('remoteServerUrl').value = rUrl
+  const remoteStatusEl = $('remoteStatus')
+  if (rUrl) {
+    remoteStatusEl.textContent = `Remote mode → ${rUrl}`
+    remoteStatusEl.className   = 'gdrive-status connected'
+  } else {
+    remoteStatusEl.textContent = 'Local mode — agent runs on this Mac'
+    remoteStatusEl.className   = 'gdrive-status'
+  }
 }
 
 $('gdriveConnectBtn').addEventListener('click', async () => {
@@ -798,11 +810,33 @@ $('settingsSaveBtn').addEventListener('click', async () => {
   const anthropicKey = $('settingsApiKey').value.trim()
   const openaiKey    = $('settingsOpenaiKey').value.trim()
   const provider     = $('settingsProvider').value
+  const remoteUrl    = $('remoteServerUrl').value.trim()
   if (anthropicKey) await yantra.settings.set('apiKey',           anthropicKey)
   if (openaiKey)    await yantra.settings.set('openaiApiKey',     openaiKey)
   await yantra.settings.set('preferredProvider', provider)
+  await yantra.settings.set('remoteServerUrl',   remoteUrl)
+  await loadSettingsPanel()
   addActivityItem('✅', 'Settings saved')
-  addCard({ id: `settings-saved-${Date.now()}`, type: 'text', text: '✓ Settings saved.' })
+  addCard({ id: `settings-saved-${Date.now()}`, type: 'text', text: remoteUrl
+    ? `✓ Settings saved. Agent will run on **${remoteUrl}**`
+    : '✓ Settings saved. Agent running locally.' })
+})
+
+$('remoteTestBtn').addEventListener('click', async () => {
+  const url = $('remoteServerUrl').value.trim()
+  if (!url) { alert('Enter a Railway server URL first.'); return }
+  $('remoteTestBtn').textContent = 'Testing…'
+  $('remoteTestBtn').disabled = true
+  try {
+    const health = await yantra.remote.test(url)
+    const toolCount = (health.tools || []).length
+    alert(`✅ Connected!\n\nServer: ${url}\nTools available: ${toolCount}\nActive sessions: ${health.sessions}\nUptime: ${Math.round((health.uptime || 0) / 60)} min\n\nClick Save Settings to activate remote mode.`)
+  } catch (e) {
+    alert(`❌ Connection failed: ${e.message}\n\nCheck that:\n1. Railway service is deployed and running\n2. The URL is correct (copy from Railway dashboard → Settings → Domains)\n3. Port 3737 is exposed (or Railway is using the PORT env var)`)
+  } finally {
+    $('remoteTestBtn').textContent = 'Test'
+    $('remoteTestBtn').disabled = false
+  }
 })
 
 function makeKeyToggle(inputId, btnId) {

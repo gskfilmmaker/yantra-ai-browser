@@ -299,6 +299,19 @@
           </div>
           <hr class="settings-sep">
           <div class="settings-section">
+            <div class="settings-section-title">Remote Backend (Railway)</div>
+            <div id="remoteStatus" class="gdrive-status">Local mode — agent runs on this Mac</div>
+            <div class="modal-field">
+              <label class="field-label">Railway Server URL</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input id="remoteServerUrl" class="field-input" type="text" placeholder="https://yantra-server.up.railway.app" autocomplete="off" style="flex:1">
+                <button class="panel-btn" id="remoteTestBtn" style="white-space:nowrap">Test</button>
+              </div>
+            </div>
+            <div class="field-hint">Leave empty to run the agent locally. Paste your Railway public URL to offload all AI + browsing to the cloud — eliminates Mac hanging and keeps sessions alive 24/7.</div>
+          </div>
+          <hr class="settings-sep">
+          <div class="settings-section">
             <div class="settings-section-title">Data</div>
             <div class="settings-actions-row">
               <button class="settings-danger-btn" id="settingsClearMemory">Clear Memory</button>

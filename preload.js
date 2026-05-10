@@ -98,6 +98,10 @@ contextBridge.exposeInMainWorld('yantra', {
     listFolders: ()                       => ipcRenderer.invoke('gdrive:listFolders'),
   },
 
+  remote: {
+    test: (url) => ipcRenderer.invoke('remote:test', url),
+  },
+
   vault: {
     list:   ()             => ipcRenderer.invoke('vault:list'),
     get:    (site)         => ipcRenderer.invoke('vault:get', site),

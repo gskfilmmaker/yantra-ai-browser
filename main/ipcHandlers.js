@@ -199,8 +199,47 @@ function register() {
     interruptMessages.set(sessionId, message)
   })
 
+  // ── Remote backend test ─────────────────────────────────────────────────────
+  ipcMain.handle('remote:test', async (_, url) => {
+    const { testConnection } = require('./ai/remoteAgent')
+    return testConnection(url)
+  })
+
   // ── Agent run ───────────────────────────────────────────────────────────────
   ipcMain.handle('agent:run', async (event, { message, sessionId }) => {
+    // ── Remote mode: forward to Railway server ──────────────────────────────
+    const remoteUrl = appSettings.get('remoteServerUrl')
+    if (remoteUrl) {
+      sessionMeta.set(sessionId, { goal: message.slice(0, 120), startedAt: Date.now(), completedAt: null })
+      cancelledSessions.delete(sessionId)
+      interruptMessages.delete(sessionId)
+      try {
+        const { runRemoteLoop } = require('./ai/remoteAgent')
+        await runRemoteLoop({
+          event,
+          sessionId,
+          message,
+          history: sessionHistory.get(sessionId) || [],
+          isCancelled:  () => cancelledSessions.has(sessionId),
+          getInterrupt: () => {
+            const msg = interruptMessages.get(sessionId)
+            if (msg) interruptMessages.delete(sessionId)
+            return msg || null
+          },
+          baseUrl: remoteUrl,
+        })
+        const meta = sessionMeta.get(sessionId)
+        if (meta) { meta.completedAt = Date.now(); sessionMeta.set(sessionId, meta) }
+        saveSessions()
+      } catch (e) {
+        event.sender.send('agent-event', { sessionId, type: 'error', text: `Remote server error: ${e.message}` })
+      }
+      event.sender.send('agent-event', { sessionId, type: 'done' })
+      cancelledSessions.delete(sessionId)
+      return
+    }
+
+    // ── Local mode ──────────────────────────────────────────────────────────
     if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY) {
       event.sender.send('agent-event', { sessionId, type: 'error', text: 'Add an API key in Settings (⚙).' })
       event.sender.send('agent-event', { sessionId, type: 'done' })
