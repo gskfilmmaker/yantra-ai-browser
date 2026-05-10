@@ -28,6 +28,12 @@ function cancelAgentRun() {
   if (!isRunning || !activeTabId) return
   api.agent.cancel(activeTabId)
 }
+
+async function resumeSession(fromSessionId, goal) {
+  if (isRunning) return
+  await yantra.sessions.resume(fromSessionId, activeTabId)
+  sendMessage(`Continue the task from where it was interrupted. The task was: "${goal}". Review what was already done and pick up from the last completed step.`)
+}
 function timeAgo(iso) {
   if (!iso) return ''
   const d = new Date(iso)
@@ -134,6 +140,25 @@ api.on.tabUpdated((tab) => {
 
 api.on.tabClosed(({ tabs: t }) => { tabs = t; renderTabs() })
 api.on.agentEvent(handleAgentEvent)
+
+// Fix 4: Check for incomplete tasks from previous session and offer resume
+;(async () => {
+  try {
+    const incomplete = await yantra.sessions.getIncomplete()
+    if (incomplete && incomplete.length > 0) {
+      const newest = incomplete[0]
+      const ago = Math.round((Date.now() - newest.startedAt) / 60000)
+      const agoStr = ago < 60 ? `${ago}m ago` : `${Math.round(ago / 60)}h ago`
+      addCard({
+        id:   `resume-${newest.sessionId}`,
+        type: 'resume',
+        sessionId: newest.sessionId,
+        goal: newest.goal,
+        agoStr,
+      })
+    }
+  } catch { /* non-fatal */ }
+})()
 
 api.on.downloadComplete(d => {
   const mb = (d.size / 1048576).toFixed(1)
@@ -1381,7 +1406,7 @@ function buildCard(item) {
 function cardHTML(item) {
   switch (item.type) {
     case 'user':
-      return `<div class="card card-user"><div class="card-user-bubble">${esc(item.text)}</div></div>`
+      return `<div class="card card-user${item.isInterrupt ? ' interrupt' : ''}"><div class="card-user-bubble">${esc(item.text)}${item.isInterrupt ? '<span class="interrupt-badge">↩ correction</span>' : ''}</div></div>`
 
     case 'text':
       return `<div class="card card-ai">
@@ -1399,20 +1424,28 @@ function cardHTML(item) {
       return ''
 
     case 'thinking': {
-      const doneSteps = (item.steps || []).map(s =>
-        `<div class="working-step">✓ ${esc(s)}</div>`
-      ).join('')
+      const log = item.log || []
+      const logId = `log-${item.id}`
       const progress = (item.turn && item.maxTurns)
         ? `<span class="working-progress">Step ${item.turn}/${item.maxTurns}${item.elapsed ? ` · ${fmtElapsed(item.elapsed)}` : ''}</span>`
         : (item.elapsed ? `<span class="working-progress">${fmtElapsed(item.elapsed)}</span>` : '')
+      const logRows = log.map(e => {
+        const t = new Date(e.ts)
+        const hh = String(t.getHours()).padStart(2, '0')
+        const mm = String(t.getMinutes()).padStart(2, '0')
+        const ss = String(t.getSeconds()).padStart(2, '0')
+        return `<div class="alog-row"><span class="alog-ts">${hh}:${mm}:${ss}</span><span class="alog-label">${esc(e.label)}</span></div>`
+      }).join('')
+      const hasLog = log.length > 0
       return `<div class="card-working">
-        ${doneSteps ? `<div class="working-history">${doneSteps}</div>` : ''}
         <div class="working-current">
           <div class="thinking-dots"><span></span><span></span><span></span></div>
           <span class="working-label">${esc(item.label || 'Working…')}</span>
           ${progress}
+          ${hasLog ? `<button class="alog-toggle" onclick="this.closest('.card-working').querySelector('.alog-panel').classList.toggle('open');this.textContent=this.closest('.card-working').querySelector('.alog-panel').classList.contains('open')?'▲ Hide log':'▼ ${log.length} steps'" title="Show action log">▼ ${log.length} steps</button>` : ''}
           <button class="working-stop-btn" onclick="cancelAgentRun()" title="Stop task">Stop</button>
         </div>
+        ${hasLog ? `<div class="alog-panel" id="${logId}">${logRows}</div>` : ''}
       </div>`
     }
 
@@ -1422,6 +1455,17 @@ function cardHTML(item) {
     case 'tool_call':
       // Legacy — not shown in chat; activity feed handles this
       return ''
+
+    case 'resume':
+      return `<div class="card card-resume">
+        <div class="resume-icon">⏸</div>
+        <div class="resume-body">
+          <div class="resume-title">Unfinished task from ${esc(item.agoStr)}</div>
+          <div class="resume-goal">${esc(item.goal)}</div>
+        </div>
+        <button class="resume-btn" onclick="resumeSession('${esc(item.sessionId)}','${esc(item.goal)}')">Resume</button>
+        <button class="resume-dismiss" onclick="this.closest('.card-resume').remove()" title="Dismiss">✕</button>
+      </div>`
 
     case 'feedback':
       return `<div class="card card-feedback">
@@ -1560,17 +1604,24 @@ function handleAgentEvent(ev) {
                    : ev.toolName === 'save_note'         ? 'Saving note…'
                    : ev.toolName === 'saveFinding'       ? 'Saving finding…'
                    : ev.toolName === 'generateReport'    ? 'Generating report…'
-                   : ev.toolName === 'scheduleTask'      ? `Scheduling: ${ev.toolInput?.name || ''}`
-                   : ev.toolName === 'watchPage'         ? `Setting up monitor…`
+                   : ev.toolName === 'scheduleTask'           ? `Scheduling: ${ev.toolInput?.name || ''}`
+                   : ev.toolName === 'watchPage'              ? `Setting up monitor…`
+                   : ev.toolName === 'wait_for_download'      ? `Waiting for download to complete…`
+                   : ev.toolName === 'find_recent_downloads'  ? `Checking Downloads folder…`
+                   : ev.toolName === 'move_to_google_drive'   ? `Moving to Google Drive: ${(ev.toolInput?.filename_or_path || '').split('/').pop()}`
+                   : ev.toolName === 'move_file'              ? `Moving file: ${(ev.toolInput?.source || '').split('/').pop()}`
+                   : ev.toolName === 'copy_file'              ? `Copying file…`
+                   : ev.toolName === 'list_directory'         ? `Listing: ${ev.toolInput?.directory || '~/Downloads'}`
+                   : ev.toolName === 'get_google_drive_path'  ? `Finding Google Drive folder…`
                    : `${ev.toolName}…`
       if (!_workingCardId) {
-        const item = { id: `thinking-${Date.now()}`, type: 'thinking', label: _label, steps: [] }
+        const item = { id: `thinking-${Date.now()}`, type: 'thinking', label: _label, log: [{ ts: Date.now(), label: _label }] }
         _workingCardId = item.id
         addCard(item)
       } else {
         const item = convo().items.find(i => i.id === _workingCardId)
         if (item) {
-          if (item.label) item.steps = [...(item.steps || []), item.label].slice(-4)
+          item.log = [...(item.log || []), { ts: Date.now(), label: _label }]
           item.label = _label
           patchCard(_workingCardId)
           scrollThread()
@@ -1617,6 +1668,19 @@ function handleAgentEvent(ev) {
       break
     }
 
+    case 'interrupt_ack': {
+      // Agent received the correction — update working card label
+      if (_workingCardId) {
+        const item = convo().items.find(i => i.id === _workingCardId)
+        if (item) {
+          item.log = [...(item.log || []), { ts: Date.now(), label: `↩ Received correction: "${ev.text.slice(0, 60)}"` }]
+          item.label = `Processing correction…`
+          patchCard(_workingCardId)
+        }
+      }
+      break
+    }
+
     case 'error':
       _removeWorkingCard()
       addCard({ id: `err-${Date.now()}`, type: 'error', text: ev.text })
@@ -1634,25 +1698,31 @@ function handleAgentEvent(ev) {
 function finishRun() {
   isRunning = false
   _workingCardId = null
-  $('aiSend').disabled  = false
-  $('aiInput').disabled = false
+  $('aiInput').placeholder = 'Ask Yantra anything… (Cmd+K for commands)'
   $('aiInput').focus()
 }
 
 // ─── Send message ─────────────────────────────────────────────────────────────
 
 async function sendMessage(prefill) {
-  if (isRunning) return
   const inputEl = $('aiInput')
   const text = (prefill || inputEl.value).trim()
   if (!text) return
   if (!prefill) { inputEl.value = ''; resizeAiInput() }
 
+  // Agent is running — send as a mid-task correction instead of starting a new run
+  if (isRunning) {
+    addCard({ id: `u-${Date.now()}`, type: 'user', text, isInterrupt: true })
+    scrollThread(true)
+    api.agent.interrupt(activeTabId, text)
+    addActivityItem('↩️', `Correction sent: ${text.slice(0, 50)}`)
+    return
+  }
+
   if (!convos[activeTabId]) convos[activeTabId] = { items: [] }
 
   isRunning = true
-  $('aiSend').disabled  = true
-  $('aiInput').disabled = true
+  $('aiInput').placeholder = 'Agent is working — type here to send a correction…'
 
   $('sessionTab').textContent = text.slice(0, 30) + (text.length > 30 ? '…' : '')
   addCard({ id: `u-${Date.now()}`, type: 'user', text })

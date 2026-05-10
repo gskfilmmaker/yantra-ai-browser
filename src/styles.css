@@ -598,19 +598,66 @@ select option { background: var(--surface2); color: var(--text) }
 }
 .clear-chat-btn:hover { background: var(--surface2); color: var(--text2) }
 
-/* Working status card — live progress with history */
+/* Working status card — live progress with expandable action log */
 .card-working { background: none; border: none; padding: 4px 0 }
 .working-current { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
 .working-label { font-size: 11.5px; color: var(--text2); font-style: italic }
 .working-progress { font-size: 10.5px; color: var(--text3); font-variant-numeric: tabular-nums }
-.working-history { margin-bottom: 4px; display: flex; flex-direction: column; gap: 2px }
-.working-step { font-size: 10.5px; color: var(--text3); padding-left: 2px }
 .working-stop-btn {
   margin-left: auto; padding: 2px 8px; border-radius: var(--r);
   font-size: 10.5px; color: var(--text3); border: 1px solid var(--border2);
   transition: all .12s; line-height: 1.4;
 }
 .working-stop-btn:hover { background: rgba(239,68,68,.12); color: var(--red); border-color: rgba(239,68,68,.3) }
+
+/* Action log toggle button */
+.alog-toggle {
+  padding: 2px 7px; border-radius: var(--r); font-size: 10px; color: var(--text3);
+  border: 1px solid var(--border2); transition: all .12s; line-height: 1.4; white-space: nowrap;
+}
+.alog-toggle:hover { background: var(--surface3); color: var(--text2) }
+
+/* Expandable action log panel */
+.alog-panel {
+  display: none; margin-top: 6px; max-height: 180px; overflow-y: auto;
+  background: var(--surface2); border: 1px solid var(--border1); border-radius: var(--r);
+  padding: 6px 8px; font-size: 10.5px;
+}
+.alog-panel.open { display: block }
+.alog-row { display: flex; gap: 8px; padding: 1.5px 0; border-bottom: 1px solid var(--border1) }
+.alog-row:last-child { border-bottom: none }
+.alog-ts { color: var(--text3); font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0 }
+.alog-label { color: var(--text2) }
+
+/* Interrupt correction message */
+.card-user.interrupt .card-user-bubble { border-color: var(--blue); opacity: .9 }
+.interrupt-badge {
+  display: inline-block; margin-left: 8px; font-size: 9.5px; color: var(--blue);
+  background: rgba(59,130,246,.12); border-radius: 4px; padding: 1px 5px;
+  vertical-align: middle;
+}
+
+/* Resume card */
+.card-resume {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--r2);
+  margin-bottom: 4px;
+}
+.resume-icon { font-size: 18px; flex-shrink: 0 }
+.resume-body { flex: 1; min-width: 0 }
+.resume-title { font-size: 10.5px; color: var(--text3); margin-bottom: 2px }
+.resume-goal { font-size: 12px; color: var(--text1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.resume-btn {
+  padding: 4px 12px; border-radius: var(--r); font-size: 11.5px;
+  background: var(--blue); color: #fff; border: none; cursor: pointer;
+  transition: opacity .12s; white-space: nowrap; flex-shrink: 0;
+}
+.resume-btn:hover { opacity: .85 }
+.resume-dismiss {
+  padding: 2px 6px; border-radius: var(--r); font-size: 11px; color: var(--text3);
+  border: none; cursor: pointer; flex-shrink: 0;
+}
+.resume-dismiss:hover { color: var(--text1) }
 
 /* === FIND BAR ===================================================== */
 .find-bar {

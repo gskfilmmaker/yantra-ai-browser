@@ -31,16 +31,16 @@ require('./tools/personaTools')
 require('./tools/fileSystemTools')
 
 // ── Per-session conversation history (server-side) ───────────────────────────
-const sessionHistory = new Map()
-const cancelledSessions = new Set()
+const sessionHistory   = new Map()  // sessionId → messages[]
+const sessionMeta      = new Map()  // sessionId → { goal, startedAt, completedAt }
+const cancelledSessions  = new Set()
+const interruptMessages  = new Map()  // sessionId → queued interrupt string
 
 const SESSIONS_FILE = path.join(os.homedir(), '.yantra', 'sessions.json')
 
 function _isValidHistory(msgs) {
   if (!Array.isArray(msgs)) return false
-  // Reject sessions that contain OpenAI-format role:system messages
   if (msgs.some(m => m.role === 'system')) return false
-  // Reject sessions where assistant only said trivial things like "Switched to agent"
   const asstMsgs = msgs.filter(m => m.role === 'assistant')
   if (asstMsgs.length && asstMsgs.every(m => {
     const text = typeof m.content === 'string' ? m.content
@@ -54,8 +54,19 @@ function loadSessions() {
   try {
     if (fs.existsSync(SESSIONS_FILE)) {
       const data = JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf8'))
-      for (const [id, msgs] of Object.entries(data)) {
-        if (_isValidHistory(msgs)) sessionHistory.set(id, msgs)
+      for (const [id, entry] of Object.entries(data)) {
+        // Support both old format (plain array) and new format ({ messages, goal, ... })
+        const msgs = Array.isArray(entry) ? entry : (entry?.messages || [])
+        if (_isValidHistory(msgs)) {
+          sessionHistory.set(id, msgs)
+          if (!Array.isArray(entry) && entry.goal) {
+            sessionMeta.set(id, {
+              goal:        entry.goal,
+              startedAt:   entry.startedAt || 0,
+              completedAt: entry.completedAt || null,
+            })
+          }
+        }
       }
     }
   } catch { /* ignore */ }
@@ -64,7 +75,10 @@ function loadSessions() {
 function saveSessions() {
   try {
     const data = {}
-    for (const [id, msgs] of sessionHistory) data[id] = msgs.slice(-60)
+    for (const [id, msgs] of sessionHistory) {
+      const meta = sessionMeta.get(id) || {}
+      data[id] = { ...meta, messages: msgs.slice(-60) }
+    }
     fs.mkdirSync(path.dirname(SESSIONS_FILE), { recursive: true })
     fs.writeFileSync(SESSIONS_FILE, JSON.stringify(data), 'utf8')
   } catch { /* ignore */ }
@@ -133,7 +147,34 @@ function register() {
   })
   ipcMain.handle('sessions:clear', () => {
     sessionHistory.clear()
+    sessionMeta.clear()
     saveSessions()
+  })
+
+  ipcMain.handle('sessions:getIncomplete', () => {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000
+    const result = []
+    for (const [id, meta] of sessionMeta) {
+      if (!meta.completedAt && meta.startedAt > cutoff && meta.goal) {
+        result.push({ sessionId: id, goal: meta.goal, startedAt: meta.startedAt })
+      }
+    }
+    return result.sort((a, b) => b.startedAt - a.startedAt).slice(0, 3)
+  })
+
+  ipcMain.handle('sessions:resume', (_, { fromSessionId, toSessionId }) => {
+    const msgs = sessionHistory.get(fromSessionId)
+    if (!msgs) return false
+    sessionHistory.set(toSessionId, msgs)
+    const meta = sessionMeta.get(fromSessionId)
+    if (meta) sessionMeta.set(toSessionId, { ...meta, completedAt: null })
+    saveSessions()
+    return true
+  })
+
+  // ── Agent interrupt ─────────────────────────────────────────────────────────
+  ipcMain.on('agent:interrupt', (_, sessionId, message) => {
+    interruptMessages.set(sessionId, message)
   })
 
   // ── Agent run ───────────────────────────────────────────────────────────────
@@ -148,13 +189,16 @@ function register() {
       // 1. Get active agent
       const agent = agentManager.getActiveAgent()
 
-      // 2. Run planner + build context concurrently
+      // 2. Track goal for resume-after-crash
+      sessionMeta.set(sessionId, { goal: message.slice(0, 120), startedAt: Date.now(), completedAt: null })
+
+      // 3. Run planner + build context concurrently
       const [plan, ctx] = await Promise.all([
         planner.classify(message).catch(() => ({ type: 'simple' })),
         contextEngine.buildContext({ agent, userPrompt: message, sessionId }),
       ])
 
-      // 3. If multi-step plan, emit it to the renderer as a plan card
+      // 4. If multi-step plan, emit it to the renderer as a plan card
       if (plan.type === 'multi_step' && plan.steps?.length) {
         event.sender.send('agent-event', {
           sessionId, type: 'plan',
@@ -162,7 +206,7 @@ function register() {
         })
       }
 
-      // 4. Combine context prefix with user message (+ plan guidance if multi-step)
+      // 5. Combine context prefix with user message (+ plan guidance if multi-step)
       let fullMessage = ctx.contextPrefix
         ? `${ctx.contextPrefix}\n\n---\n\nUSER REQUEST:\n${message}`
         : message
@@ -171,10 +215,10 @@ function register() {
         fullMessage += `\n\n---\n\nPLAN TO FOLLOW:\n${plan.steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\nExecute these steps systematically.`
       }
 
-      // 5. Get tool schemas filtered to this agent's permissions
+      // 6. Get tool schemas filtered to this agent's permissions
       const tools = registry.schemasForAgent(agent.tools)
 
-      // 6. Inject active persona system prompt if one is set
+      // 7. Inject active persona system prompt if one is set
       let systemPrompt = ctx.systemPrompt
       try {
         const activePersonaId = appSettings.get('activePersonaId')
@@ -185,8 +229,9 @@ function register() {
         }
       } catch { /* non-fatal */ }
 
-      // 7. Run the streaming agent loop — 30 min timeout, with cancel support
+      // 8. Run the streaming agent loop — 30 min timeout, with cancel + interrupt + checkpoint
       cancelledSessions.delete(sessionId)
+      interruptMessages.delete(sessionId)
       const priorHistory = sessionHistory.get(sessionId) || []
       const timeout = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Request timed out after 30 minutes')), 1_800_000))
@@ -198,13 +243,24 @@ function register() {
         systemPrompt,
         tools,
         isCancelled:  () => cancelledSessions.has(sessionId),
+        getInterrupt: () => {
+          const msg = interruptMessages.get(sessionId)
+          if (msg) interruptMessages.delete(sessionId)
+          return msg || null
+        },
+        onCheckpoint: (msgs) => {
+          sessionHistory.set(sessionId, msgs)
+          saveSessions()
+        },
       })])
 
-      // 8. Persist conversation
+      // 9. Persist final conversation and mark completed
       sessionHistory.set(sessionId, finalMessages)
+      const meta = sessionMeta.get(sessionId)
+      if (meta) { meta.completedAt = Date.now(); sessionMeta.set(sessionId, meta) }
       saveSessions()
 
-      // 9. Auto-save research result to memory (skip trivial/corrupted responses)
+      // 10. Auto-save research result to memory (skip trivial/corrupted responses)
       const lastAsst = [...finalMessages].reverse().find(m => m.role === 'assistant')
       const lastText = Array.isArray(lastAsst?.content)
         ? (lastAsst.content.find(b => b.type === 'text')?.text || '')

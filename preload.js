@@ -27,8 +27,9 @@ contextBridge.exposeInMainWorld('api', {
 
   // ── AI agent ────────────────────────────────────────────────────────────────
   agent: {
-    run:    (data)      => ipcRenderer.invoke('agent:run', data),
-    cancel: (sessionId) => ipcRenderer.send('agent:cancel', sessionId),
+    run:       (data)               => ipcRenderer.invoke('agent:run', data),
+    cancel:    (sessionId)          => ipcRenderer.send('agent:cancel', sessionId),
+    interrupt: (sessionId, message) => ipcRenderer.send('agent:interrupt', sessionId, message),
   },
 
   // ── Memory ──────────────────────────────────────────────────────────────────
@@ -77,7 +78,9 @@ contextBridge.exposeInMainWorld('yantra', {
     clear:   ()      => ipcRenderer.invoke('memory:clear'),
   },
   sessions: {
-    clear: () => ipcRenderer.invoke('sessions:clear'),
+    clear:         ()              => ipcRenderer.invoke('sessions:clear'),
+    getIncomplete: ()              => ipcRenderer.invoke('sessions:getIncomplete'),
+    resume:        (fromId, toId) => ipcRenderer.invoke('sessions:resume', { fromSessionId: fromId, toSessionId: toId }),
   },
   settings: {
     get: ()       => ipcRenderer.invoke('settings:get'),
