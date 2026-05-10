@@ -1,6 +1,6 @@
 version: '3.8'
 services:
-  yantra:
+  yantra-server:
     build: .
     ports:
       - "3737:3737"

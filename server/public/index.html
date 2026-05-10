@@ -2,206 +2,454 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Yantra Server</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yantra Agent</title>
 <style>
-  :root { --bg:#111; --surface:#1a1a1a; --surface2:#222; --border:#333; --text:#eee; --text2:#aaa; --text3:#666; --blue:#3b82f6; --red:#ef4444; --green:#22c55e; --r:6px }
-  *,*::before,*::after { box-sizing:border-box; margin:0; padding:0 }
-  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; height:100vh; display:flex; flex-direction:column }
-  #header { display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid var(--border); flex-shrink:0 }
-  #header h1 { font-size:16px; font-weight:600 }
-  #status { font-size:11px; color:var(--text3); margin-left:auto }
-  #status.ok { color:var(--green) }
-  #browser-bar { display:flex; gap:8px; padding:8px 16px; border-bottom:1px solid var(--border); flex-shrink:0 }
-  #current-page { font-size:11px; color:var(--text3); align-self:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1 }
-  #main { display:flex; flex:1; overflow:hidden }
-  #thread { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px }
-  #panel { width:320px; border-left:1px solid var(--border); padding:12px; overflow-y:auto; flex-shrink:0 }
-  #panel h3 { font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px }
-  .msg-user { background:var(--surface2); border-radius:var(--r); padding:10px 14px; font-size:14px; align-self:flex-end; max-width:80% }
-  .msg-user.interrupt { border-left:3px solid var(--blue) }
-  .msg-ai { font-size:14px; line-height:1.7; white-space:pre-wrap; word-break:break-word }
-  .msg-tool { display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--text3); padding:3px 0 }
-  .tool-pill { background:var(--surface2); border:1px solid var(--border); border-radius:4px; padding:1px 7px; font-size:10.5px }
-  .msg-progress { font-size:11px; color:var(--text3) }
-  .msg-error { color:var(--red); font-size:13px }
-  .dots span { display:inline-block; animation:blink 1.2s infinite; font-size:18px; line-height:1 }
-  .dots span:nth-child(2) { animation-delay:.2s } .dots span:nth-child(3) { animation-delay:.4s }
-  @keyframes blink { 0%,80%,100%{opacity:.1} 40%{opacity:1} }
-  #input-area { padding:12px 16px; border-top:1px solid var(--border); display:flex; gap:8px; flex-shrink:0 }
-  #msgInput { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:var(--r); color:var(--text); padding:8px 12px; font-size:14px; resize:none; min-height:40px; max-height:120px; font-family:inherit }
-  #msgInput:focus { outline:none; border-color:var(--blue) }
-  button { cursor:pointer; border:none; border-radius:var(--r); font-family:inherit; font-size:13px; transition:opacity .12s }
-  #sendBtn { background:var(--blue); color:#fff; padding:0 16px; height:40px }
-  #stopBtn { background:var(--surface2); border:1px solid var(--border); color:var(--text2); padding:0 12px; height:40px; display:none }
-  #sendBtn:hover,#stopBtn:hover { opacity:.85 }
-  .session-item { padding:8px; border-radius:var(--r); font-size:11.5px; cursor:pointer; margin-bottom:4px }
-  .session-item:hover { background:var(--surface2) }
-  .session-goal { color:var(--text2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
-  .session-time { font-size:10px; color:var(--text3); margin-top:2px }
-  .session-item.incomplete .session-goal::before { content:'⏸ '; color:var(--blue) }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:       #111113;
+    --surface:  #1a1a1f;
+    --surface2: #222228;
+    --border:   #2e2e38;
+    --accent:   #7c6aff;
+    --accent2:  #a78bfa;
+    --text:     #e2e2e8;
+    --text2:    #8888a0;
+    --text3:    #55555f;
+    --green:    #34d399;
+    --yellow:   #fbbf24;
+    --red:      #f87171;
+    --pill:     #281f50;
+    --pillbor:  #3d2e70;
+    --r:        7px;
+    --mono:     'SF Mono','Fira Code','Cascadia Code',monospace;
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text);
+    font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+    font-size: 14px; line-height: 1.6; }
+
+  /* Layout */
+  .layout { display: grid; grid-template-rows: auto auto 1fr auto;
+    height: 100vh; max-width: 900px; margin: 0 auto; padding: 0 16px; }
+
+  /* Header */
+  header { display: flex; align-items: center; gap: 10px; padding: 12px 0;
+    border-bottom: 1px solid var(--border); }
+  .logo { font-size: 18px; font-weight: 700; letter-spacing: -.5px;
+    background: linear-gradient(135deg,var(--accent),var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); transition: background .3s; }
+  .dot.connected { background: var(--green); }
+  .dot.running   { background: var(--yellow); animation: pulse 1s infinite; }
+  .dot.error     { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .status-label { font-size: 11px; color: var(--text2); }
+  .ml-auto { margin-left: auto; }
+  .current-url { font-size: 11px; font-family: var(--mono); color: var(--text2);
+    max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* URL bar row */
+  .url-row { display: flex; gap: 8px; padding: 8px 0 6px; border-bottom: 1px solid var(--border); }
+  .url-input { flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--r); color: var(--text); font-size: 12px; font-family: var(--mono);
+    padding: 6px 10px; outline: none; transition: border-color .2s; }
+  .url-input:focus { border-color: var(--accent); }
+  .btn { cursor: pointer; border: 1px solid var(--border); border-radius: var(--r);
+    background: var(--surface2); color: var(--text); font-family: inherit; font-size: 12px;
+    padding: 6px 13px; transition: background .15s,border-color .15s; white-space: nowrap; }
+  .btn:hover { background: var(--surface); border-color: var(--accent2); color: var(--accent2); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .btn.primary:hover { background: var(--accent2); border-color: var(--accent2); }
+  .btn.stop   { color: var(--red); border-color: #3a1f1f; }
+  .btn.stop:hover { background: #2a1515; border-color: var(--red); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* Thread */
+  .thread { overflow-y: auto; padding: 14px 0; display: flex; flex-direction: column; gap: 10px; }
+
+  /* Messages */
+  .msg { display: flex; flex-direction: column; gap: 3px; }
+  .msg.user { align-items: flex-end; }
+  .msg.agent { align-items: flex-start; }
+  .bubble { padding: 9px 13px; border-radius: 11px; max-width: 82%; word-break: break-word;
+    line-height: 1.65; white-space: pre-wrap; }
+  .msg.user .bubble  { background: var(--accent); color: #fff; border-bottom-right-radius: 3px; }
+  .msg.agent .bubble { background: var(--surface); border: 1px solid var(--border);
+    border-bottom-left-radius: 3px; color: var(--text); }
+
+  /* Inline markdown */
+  .bubble strong { font-weight: 700; }
+  .bubble em     { font-style: italic; }
+  .bubble code   { font-family: var(--mono); font-size: 11.5px;
+    background: rgba(255,255,255,.07); padding: 1px 5px; border-radius: 4px; }
+  .bubble pre    { background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 9px 12px; overflow-x: auto; margin: 5px 0; }
+  .bubble pre code { background: none; padding: 0; }
+  .bubble a  { color: var(--accent2); text-decoration: underline; }
+  .bubble h1,.bubble h2,.bubble h3 { font-weight: 700; margin: 6px 0 3px; }
+  .bubble ul,.bubble ol { padding-left: 18px; margin: 3px 0; }
+  .bubble li { margin: 1px 0; }
+  .bubble p  { margin: 3px 0; }
+  .bubble hr { border: none; border-top: 1px solid var(--border); margin: 7px 0; }
+
+  /* Tool pills */
+  .tool-wrap { display: flex; flex-direction: column; gap: 3px; align-self: flex-start; }
+  .tool-pill { display: inline-flex; align-items: center; gap: 6px;
+    background: var(--pill); color: var(--accent2); border: 1px solid var(--pillbor);
+    border-radius: 20px; font-size: 11px; font-family: var(--mono);
+    padding: 3px 10px; cursor: pointer; transition: background .15s; }
+  .tool-pill:hover { background: #332460; }
+  .tool-pill.result { background: #152515; border-color: #2a452a; color: var(--green); }
+  .tool-pill.result:hover { background: #1a2f1a; }
+  .tool-arrow { font-size: 9px; color: var(--text2); }
+  .tool-detail { display: none; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 5px; padding: 7px 10px; font-size: 11px; font-family: var(--mono);
+    white-space: pre-wrap; word-break: break-all; color: var(--text2);
+    max-height: 160px; overflow-y: auto; }
+  .tool-pill.open + .tool-detail { display: block; }
+
+  /* Progress */
+  .progress-row { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text2); }
+  .progress-bar { width: 160px; height: 3px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width .4s; }
+  .thinking-dots span { display: inline-block; animation: blink 1.2s infinite; }
+  .thinking-dots span:nth-child(2) { animation-delay: .2s; }
+  .thinking-dots span:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%,80%,100%{opacity:.15} 40%{opacity:1} }
+
+  /* Input */
+  .input-area { border-top: 1px solid var(--border); padding: 10px 0 14px;
+    display: flex; gap: 8px; align-items: flex-end; }
+  .chat-input { flex: 1; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); color: var(--text); font-size: 14px; font-family: inherit;
+    padding: 9px 13px; resize: none; min-height: 40px; max-height: 150px; outline: none;
+    transition: border-color .2s; line-height: 1.5; overflow-y: auto; }
+  .chat-input:focus { border-color: var(--accent); }
+  .chat-input::placeholder { color: var(--text2); }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 50px 20px; color: var(--text2); }
+  .empty .icon { font-size: 42px; margin-bottom: 14px; }
+  .empty h2   { font-size: 17px; color: var(--text); margin-bottom: 7px; }
+  .empty p    { font-size: 13px; max-width: 300px; margin: 0 auto; }
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; margin-top: 14px; }
+  .chip  { background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 5px 13px; font-size: 12px; color: var(--text2); cursor: pointer;
+    transition: border-color .15s,color .15s; }
+  .chip:hover { border-color: var(--accent); color: var(--accent2); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 </style>
 </head>
 <body>
-<div id="header">
-  <h1>⟁ Yantra</h1>
-  <div id="status">Connecting…</div>
-</div>
-<div id="browser-bar">
-  <span id="current-page">No page loaded</span>
-</div>
-<div id="main">
-  <div id="thread"></div>
-  <div id="panel">
-    <h3>Recent Sessions</h3>
-    <div id="sessionList"></div>
+<div class="layout">
+
+  <!-- Header -->
+  <header>
+    <span class="logo">Yantra</span>
+    <span class="dot" id="dot"></span>
+    <span class="status-label" id="statusLabel">connecting…</span>
+    <span class="ml-auto current-url" id="currentUrl"></span>
+  </header>
+
+  <!-- URL navigate bar -->
+  <div class="url-row">
+    <input class="url-input" id="urlInput" type="text" placeholder="Navigate browser to URL…" />
+    <button class="btn" id="goBtn">Go</button>
   </div>
-</div>
-<div id="input-area">
-  <textarea id="msgInput" placeholder="Ask Yantra anything… (Enter to send, Shift+Enter for newline)" rows="1"></textarea>
-  <button id="sendBtn">Send</button>
-  <button id="stopBtn">Stop</button>
+
+  <!-- Conversation thread -->
+  <div class="thread" id="thread">
+    <div class="empty" id="emptyState">
+      <div class="icon">🤖</div>
+      <h2>Yantra Agent</h2>
+      <p>A headless cloud browser agent. Ask me to research, navigate, fill forms, or automate tasks.</p>
+      <div class="chips">
+        <div class="chip" data-msg="Search DuckDuckGo for the latest AI news and summarize the top 5 stories">AI news roundup</div>
+        <div class="chip" data-msg="Go to https://news.ycombinator.com and list the top 5 posts">HN front page</div>
+        <div class="chip" data-msg="Search for 'best open source LLMs 2025' and give me a comparison">Open source LLMs</div>
+        <div class="chip" data-msg="Go to https://github.com/trending and list today's trending repositories">GitHub trending</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input -->
+  <div class="input-area">
+    <textarea class="chat-input" id="chatInput"
+      placeholder="Ask Yantra to do something… (Enter to send · Shift+Enter for newline)"
+      rows="1"></textarea>
+    <button class="btn stop" id="stopBtn" disabled>Stop</button>
+    <button class="btn primary" id="sendBtn">Send</button>
+  </div>
 </div>
 
 <script>
-const BASE = ''
-let sessionId = null
-let isRunning = false
-let es = null
+'use strict'
 
-// ── Health check ──────────────────────────────────────────────────────────────
-async function checkHealth() {
-  try {
-    const r = await fetch(BASE + '/api/health')
-    const d = await r.json()
-    const el = document.getElementById('status')
-    el.textContent = 'Connected · ' + d.sessions + ' sessions'
-    el.className = 'ok'
-  } catch { document.getElementById('status').textContent = 'Offline' }
+// ── State ─────────────────────────────────────────────────────────────────────
+let sessionId    = null
+let eventSource  = null
+let isRunning    = false
+let history      = []        // Anthropic-format prior messages
+let agentBubble  = null      // current streaming bubble element
+let agentText    = ''        // accumulated text for current turn
+
+// ── Elements ──────────────────────────────────────────────────────────────────
+const thread      = document.getElementById('thread')
+const emptyState  = document.getElementById('emptyState')
+const chatInput   = document.getElementById('chatInput')
+const sendBtn     = document.getElementById('sendBtn')
+const stopBtn     = document.getElementById('stopBtn')
+const dot         = document.getElementById('dot')
+const statusLabel = document.getElementById('statusLabel')
+const urlInput    = document.getElementById('urlInput')
+const goBtn       = document.getElementById('goBtn')
+const currentUrl  = document.getElementById('currentUrl')
+
+// ── Markdown renderer ─────────────────────────────────────────────────────────
+function md(raw) {
+  let s = raw
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/```[\w]*\n?([\s\S]*?)```/g, (_,c)=>`<pre><code>${c.trim()}</code></pre>`)
+    .replace(/`([^`\n]+)`/g,'<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*([^*\n]+)\*/g,'<em>$1</em>')
+    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+    .replace(/^# (.+)$/gm,'<h1>$1</h1>')
+    .replace(/^---+$/gm,'<hr>')
+    .replace(/^[•\-] (.+)$/gm,'<li>$1</li>')
+    .replace(/^\d+\. (.+)$/gm,'<li>$1</li>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/\n\n+/g,'</p><p>')
+    .replace(/\n/g,'<br>')
+  if (!/<(h[123]|pre|ul|ol|hr|p)/.test(s)) s = '<p>' + s + '</p>'
+  return s
 }
-setInterval(checkHealth, 5000); checkHealth()
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+// ── UI helpers ────────────────────────────────────────────────────────────────
+function hideEmpty() { emptyState.remove && !emptyState.isConnected || thread.contains(emptyState) && emptyState.remove() }
+function scrollBot() { thread.scrollTop = thread.scrollHeight }
+
+function setStatus(state) {
+  dot.className   = 'dot ' + state
+  statusLabel.textContent =
+    state === 'running'   ? 'running…'   :
+    state === 'connected' ? 'connected'  :
+    state === 'error'     ? 'error'      : 'idle'
+}
+
+function addUserMsg(text) {
+  hideEmpty()
+  const d = document.createElement('div')
+  d.className = 'msg user'
+  d.innerHTML = `<div class="bubble">${md(text)}</div>`
+  thread.appendChild(d); scrollBot()
+}
+
+function ensureAgentBubble() {
+  if (agentBubble) return agentBubble
+  hideEmpty()
+  const w = document.createElement('div'); w.className = 'msg agent'
+  const b = document.createElement('div'); b.className = 'bubble'
+  w.appendChild(b); thread.appendChild(w); scrollBot()
+  agentBubble = b
+  return b
+}
+
+function addToolPill(name, inputObj, isResult) {
+  hideEmpty()
+  const wrap = document.createElement('div'); wrap.className = 'tool-wrap'
+  const pill = document.createElement('div')
+  pill.className = 'tool-pill' + (isResult ? ' result' : '')
+  const icon  = isResult ? '✓' : '⚙'
+  const label = isResult ? `${name} done` : `${icon} ${name}`
+  pill.innerHTML = `<span>${label}</span><span class="tool-arrow">▼</span>`
+  const detail = document.createElement('div'); detail.className = 'tool-detail'
+  detail.textContent = inputObj && Object.keys(inputObj).length ? JSON.stringify(inputObj, null, 2) : '(no input)'
+  pill.addEventListener('click', () => {
+    pill.classList.toggle('open')
+    pill.querySelector('.tool-arrow').textContent = pill.classList.contains('open') ? '▲' : '▼'
+  })
+  wrap.appendChild(pill); wrap.appendChild(detail)
+  thread.appendChild(wrap); scrollBot()
+}
+
+function addProgressRow(turn, maxTurns, elapsed) {
+  let row = document.getElementById('progressRow')
+  if (!row) { row = document.createElement('div'); row.id = 'progressRow'; row.className = 'progress-row'; thread.appendChild(row) }
+  const pct = Math.round((turn / maxTurns) * 100)
+  row.innerHTML = `
+    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    <span class="thinking-dots"><span>·</span><span>·</span><span>·</span></span>
+    <span>Step ${turn}/${maxTurns} · ${elapsed}s</span>`
+  scrollBot()
+}
+
+function removeProgressRow() { const el = document.getElementById('progressRow'); if (el) el.remove() }
+
+function finaliseAgentBubble() {
+  if (agentBubble && agentText) history.push({ role: 'assistant', content: agentText })
+  agentBubble = null; agentText = ''
+}
+
+function addErrMsg(msg) {
+  const d = document.createElement('div'); d.className = 'msg agent'
+  d.innerHTML = `<div class="bubble" style="border-color:var(--red);color:var(--red)">⚠ ${esc(msg)}</div>`
+  thread.appendChild(d); scrollBot()
+}
+
+// ── SSE event handler ─────────────────────────────────────────────────────────
+function handleEvent(data) {
+  switch (data.type) {
+    case 'progress':
+      addProgressRow(data.turn, data.maxTurns, data.elapsed)
+      break
+    case 'text':
+      agentText = data.text || ''
+      ensureAgentBubble().innerHTML = md(agentText)
+      scrollBot()
+      break
+    case 'tool_call':
+      finaliseAgentBubble()
+      addToolPill(data.toolName, data.toolInput, false)
+      break
+    case 'tool_result':
+      addToolPill(data.toolName,
+        { result: typeof data.result === 'string' ? data.result.slice(0, 400) : data.result }, true)
+      break
+    case 'interrupt_ack':
+      if (data.text) {
+        const d = document.createElement('div'); d.className = 'msg user'
+        d.innerHTML = `<div class="bubble" style="background:var(--yellow);color:#111">📌 ${esc(data.text)}</div>`
+        thread.appendChild(d); scrollBot()
+      }
+      break
+    case 'done':
+      removeProgressRow()
+      finaliseAgentBubble()
+      onDone('connected')
+      break
+    case 'error':
+      removeProgressRow()
+      finaliseAgentBubble()
+      addErrMsg(data.message || 'Unknown error')
+      onDone('error')
+      break
+  }
+}
+
+// ── Run control ───────────────────────────────────────────────────────────────
+async function startRun(message) {
+  if (isRunning) return
+  isRunning = true
+  sendBtn.disabled = true
+  stopBtn.disabled = false
+  setStatus('running')
+  addUserMsg(message)
+  agentBubble = null; agentText = ''
+
+  let sid
+  try {
+    const r = await fetch('/api/agent/run', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, history }),
+    })
+    const d = await r.json()
+    if (!d.sessionId) throw new Error(d.error || 'No sessionId returned')
+    sid = d.sessionId
+  } catch (e) {
+    addErrMsg(e.message); onDone('error'); return
+  }
+
+  sessionId = sid
+  history.push({ role: 'user', content: message })
+
+  if (eventSource) eventSource.close()
+  eventSource = new EventSource(`/api/agent/stream/${sid}`)
+  eventSource.onmessage = (e) => { try { handleEvent(JSON.parse(e.data)) } catch {} }
+  eventSource.onerror   = ()  => { if (isRunning) onDone('error') }
+}
+
+function onDone(status) {
+  isRunning = false
+  sendBtn.disabled = false
+  stopBtn.disabled = true
+  setStatus(status)
+  if (eventSource) { eventSource.close(); eventSource = null }
+}
+
+// ── Stop ──────────────────────────────────────────────────────────────────────
+stopBtn.addEventListener('click', async () => {
+  if (!sessionId || !isRunning) return
+  try { await fetch(`/api/agent/cancel/${sessionId}`, { method: 'POST' }) } catch {}
+  removeProgressRow(); onDone('idle')
+})
+
+// ── Send ──────────────────────────────────────────────────────────────────────
+sendBtn.addEventListener('click', () => {
+  const msg = chatInput.value.trim(); if (!msg) return
+  if (isRunning && sessionId) {
+    // Inject interrupt while running
+    fetch(`/api/agent/interrupt/${sessionId}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg }),
+    })
+    chatInput.value = ''; autoResize(); return
+  }
+  chatInput.value = ''; autoResize()
+  startRun(msg)
+})
+
+chatInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendBtn.click() }
+})
+function autoResize() {
+  chatInput.style.height = 'auto'
+  chatInput.style.height = Math.min(chatInput.scrollHeight, 150) + 'px'
+}
+chatInput.addEventListener('input', autoResize)
+
+// ── URL Go ────────────────────────────────────────────────────────────────────
+goBtn.addEventListener('click', () => {
+  const url = urlInput.value.trim(); if (!url) return
+  const full = url.startsWith('http') ? url : 'https://' + url
+  chatInput.value = `Navigate to ${full} and describe what you see on the page.`
+  sendBtn.click()
+})
+urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') goBtn.click() })
+
+// ── Suggestion chips ──────────────────────────────────────────────────────────
+document.addEventListener('click', e => {
+  if (e.target.matches('.chip[data-msg]')) {
+    chatInput.value = e.target.dataset.msg; sendBtn.click()
+  }
+})
 
 // ── Browser state polling ─────────────────────────────────────────────────────
 setInterval(async () => {
-  if (!sessionId) return
+  if (!sessionId || !isRunning) return
   try {
-    const r = await fetch(BASE + '/api/browser/state?sessionId=' + sessionId)
+    const r = await fetch(`/api/browser/state?sessionId=${sessionId}`)
     const d = await r.json()
-    document.getElementById('current-page').textContent = d.title ? d.title + ' — ' + d.url : (d.url || 'No page loaded')
+    if (d.url && d.url !== 'about:blank') {
+      currentUrl.textContent = d.url.slice(0, 60)
+      urlInput.value = d.url
+    }
   } catch {}
 }, 2000)
 
-// ── Sessions list ─────────────────────────────────────────────────────────────
-async function loadSessions() {
+// ── Health check ──────────────────────────────────────────────────────────────
+;(async () => {
   try {
-    const r = await fetch(BASE + '/api/sessions')
-    const sessions = await r.json()
-    const list = document.getElementById('sessionList')
-    list.innerHTML = ''
-    sessions.forEach(s => {
-      const el = document.createElement('div')
-      el.className = 'session-item' + (s.completed_at ? '' : ' incomplete')
-      const ago = s.started_at ? Math.round((Date.now() - s.started_at) / 60000) : 0
-      el.innerHTML = `<div class="session-goal">${esc(s.goal || s.id)}</div><div class="session-time">${ago < 60 ? ago + 'm ago' : Math.round(ago/60) + 'h ago'}</div>`
-      el.addEventListener('click', () => {
-        sessionId = s.id
-        connectSSE()
-        appendMessage('system', `Resumed session: ${s.goal}`)
-      })
-      list.appendChild(el)
-    })
-  } catch {}
-}
-setInterval(loadSessions, 15000); loadSessions()
-
-// ── SSE connection ────────────────────────────────────────────────────────────
-function connectSSE() {
-  if (es) es.close()
-  es = new EventSource(BASE + '/api/agent/stream/' + sessionId)
-  es.onmessage = e => handleEvent(JSON.parse(e.data))
-}
-
-let currentAiEl = null
-function handleEvent(ev) {
-  switch (ev.type) {
-    case 'progress':
-      if (!currentAiEl) { currentAiEl = appendMessage('thinking', ''); }
-      currentAiEl.innerHTML = `<span class="dots"><span>·</span><span>·</span><span>·</span></span> Step ${ev.turn}/${ev.maxTurns} · ${fmtElapsed(ev.elapsed || 0)}`
-      break
-    case 'tool_call':
-      appendMessage('tool', ev.toolName + (ev.toolInput?.url ? ': ' + ev.toolInput.url.slice(0,60) : ev.toolInput?.query ? ': "' + ev.toolInput.query.slice(0,50) + '"' : ''))
-      break
-    case 'text':
-      if (currentAiEl && currentAiEl.dataset.type === 'thinking') { currentAiEl.remove(); currentAiEl = null }
-      if (!currentAiEl || currentAiEl.dataset.type !== 'ai') { currentAiEl = appendMessage('ai', '') }
-      currentAiEl.textContent = ev.text
-      scrollBottom()
-      break
-    case 'error':
-      appendMessage('error', ev.text)
-      finishRun(); break
-    case 'done':
-      currentAiEl = null
-      finishRun()
-      loadSessions()
-      break
-  }
-}
-
-function appendMessage(type, text) {
-  const thread = document.getElementById('thread')
-  const el = document.createElement('div')
-  el.dataset.type = type
-  el.textContent = text
-  el.className = type === 'user' ? 'msg-user' : type === 'ai' ? 'msg-ai' : type === 'tool' ? 'msg-tool' : type === 'thinking' ? 'msg-progress' : type === 'error' ? 'msg-error' : ''
-  if (type === 'tool') { const pill = document.createElement('span'); pill.className = 'tool-pill'; pill.textContent = '⚙'; el.prepend(pill) }
-  thread.appendChild(el); scrollBottom()
-  return el
-}
-
-function scrollBottom() { const t = document.getElementById('thread'); t.scrollTop = t.scrollHeight }
-
-function finishRun() {
-  isRunning = false
-  document.getElementById('sendBtn').style.display = ''
-  document.getElementById('stopBtn').style.display = 'none'
-  document.getElementById('msgInput').placeholder = 'Ask Yantra anything…'
-}
-
-function fmtElapsed(s) { return s < 60 ? s + 's' : Math.floor(s/60) + 'm ' + (s%60) + 's' }
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;') }
-
-// ── Send message ──────────────────────────────────────────────────────────────
-async function sendMessage() {
-  const input = document.getElementById('msgInput')
-  const text = input.value.trim()
-  if (!text) return
-  input.value = ''; input.style.height = 'auto'
-
-  if (isRunning && sessionId) {
-    appendMessage('user interrupt', text)
-    await fetch(BASE + '/api/agent/interrupt/' + sessionId, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text }) })
-    return
-  }
-
-  appendMessage('user', text)
-  const r = await fetch(BASE + '/api/agent/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, sessionId }) })
-  const d = await r.json()
-  sessionId = d.sessionId
-  connectSSE()
-  isRunning = true
-  document.getElementById('sendBtn').style.display = 'none'
-  document.getElementById('stopBtn').style.display = ''
-  document.getElementById('msgInput').placeholder = 'Agent is working — type here to send a correction…'
-}
-
-document.getElementById('sendBtn').addEventListener('click', sendMessage)
-document.getElementById('msgInput').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } })
-document.getElementById('msgInput').addEventListener('input', function() { this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 120) + 'px' })
-document.getElementById('stopBtn').addEventListener('click', async () => {
-  if (!sessionId) return
-  await fetch(BASE + '/api/agent/cancel/' + sessionId, { method: 'POST' })
-})
+    const r = await fetch('/api/health')
+    if (r.ok) setStatus('connected')
+    else       setStatus('error')
+  } catch { setStatus('error') }
+})()
 </script>
 </body>
 </html>
